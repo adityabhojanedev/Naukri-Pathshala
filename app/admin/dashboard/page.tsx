@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Fragment } from 'react';
+import { useState, useEffect, Fragment, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
     Users, Shield, AlertTriangle, CheckCircle, XCircle,
@@ -41,6 +41,14 @@ const dummyContests = [
 ];
 
 export default function AdminDashboard() {
+    return (
+        <Suspense fallback={<div className="flex items-center justify-center min-h-screen">Loading...</div>}>
+            <AdminDashboardContent />
+        </Suspense>
+    );
+}
+
+function AdminDashboardContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const [users, setUsers] = useState<User[]>([]);
