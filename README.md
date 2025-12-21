@@ -1,4 +1,4 @@
-# Naukri Pathshala Contest Platform
+# Naukri Pathshala Contest Platform 
 
 A robust, multilingual contest platform built with Next.js 14 and MongoDB, designed for secure and engaging online examinations.
 
@@ -53,7 +53,7 @@ First, install dependencies:
 npm install
 ```
 
-Run the development server:
+Run the development server:-
 
 ```bash
 npm run dev
