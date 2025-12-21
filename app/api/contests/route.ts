@@ -4,6 +4,11 @@ import Contest from '@/models/Contest';
 
 export async function GET() {
     try {
+        if (!process.env.MONGODB_URI) {
+            console.error('MONGODB_URI is not defined in environment variables');
+            return NextResponse.json({ success: false, error: 'Configuration Error: MONGODB_URI is missing' }, { status: 500 });
+        }
+
         await dbConnect();
 
         const contests = await Contest.find({
@@ -14,7 +19,13 @@ export async function GET() {
 
         return NextResponse.json({ success: true, data: contests });
     } catch (error: any) {
-        console.error('Failed to fetch contests:', error);
-        return NextResponse.json({ success: false, error: 'Failed to fetch contests' }, { status: 500 });
+        console.error('Failed to fetch contests detailed:', error);
+        return NextResponse.json({
+            success: false,
+            error: 'Failed to fetch contests',
+            details: error.message,
+            stack: error.stack,
+            type: error.name
+        }, { status: 500 });
     }
 }
