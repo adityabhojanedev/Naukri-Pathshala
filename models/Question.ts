@@ -7,6 +7,11 @@ const QuestionSchema = new Schema({
         ref: 'Contest',
         required: true,
     },
+    subject: {
+        type: String,
+        required: false,
+        default: 'General',
+    },
     text: {
         type: Map,
         of: String, // { "en": "What is...?", "hi": "Kya hai...?" }

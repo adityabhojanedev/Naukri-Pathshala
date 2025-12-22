@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Calendar, Clock, Trophy, ArrowRight, Zap } from 'lucide-react';
+import { Calendar, Clock, Trophy, ArrowRight, Zap, XCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import ConfirmationModal from '@/components/ui/ConfirmationModal';
@@ -9,12 +9,15 @@ import ConfirmationModal from '@/components/ui/ConfirmationModal';
 interface Contest {
     _id: string;
     title: string;
+    description: string;
+    supportedLanguages: string[];
     startTime: string;
     duration: number;
     difficulty: string;
     category: string;
     status: string;
     slots: number;
+    hasJoined?: boolean;
 }
 
 export default function ContestCard({ contest }: { contest: Contest }) {
@@ -146,36 +149,60 @@ export default function ContestCard({ contest }: { contest: Contest }) {
                         </div>
                     </div>
 
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-4 line-clamp-2">
+                        {contest.description}
+                    </p>
+
                     {/* Info Grid */}
-                    <div className="grid grid-cols-2 gap-y-3 gap-x-4 mb-6 text-sm text-gray-600 dark:text-gray-400">
+                    <div className="grid grid-cols-2 gap-y-2 md:gap-y-3 gap-x-4 mb-4 md:mb-6 text-xs md:text-sm text-gray-600 dark:text-gray-400">
                         <div className="flex items-center gap-2">
-                            <Calendar size={16} className="text-gray-400" />
+                            <Calendar size={14} className="md:w-4 md:h-4 text-gray-400" />
                             <span>{new Date(contest.startTime).toLocaleDateString()}</span>
                         </div>
                         <div className="flex items-center gap-2">
-                            <Clock size={16} className="text-gray-400" />
+                            <Clock size={14} className="md:w-4 md:h-4 text-gray-400" />
                             <span>{contest.duration} mins</span>
                         </div>
                         <div className="flex items-center gap-2">
-                            <Trophy size={16} className="text-yellow-500" />
+                            <Trophy size={14} className="md:w-4 md:h-4 text-yellow-500" />
                             <span>{contest.difficulty}</span>
                         </div>
                         <div className="flex items-center gap-2">
-                            <span className="w-4 h-4 rounded-full border-2 border-gray-300 dark:border-zinc-600 flex items-center justify-center text-[10px] font-bold">C</span>
+                            <span className="w-3.5 h-3.5 md:w-4 md:h-4 rounded-full border-2 border-gray-300 dark:border-zinc-600 flex items-center justify-center text-[8px] md:text-[10px] font-bold">C</span>
                             <span>{contest.category}</span>
+                        </div>
+                    </div>
+
+                    {/* Languages */}
+                    <div className="flex items-center gap-2 mb-6">
+                        <span className="text-xs text-gray-500 font-medium uppercase tracking-wider">Languages:</span>
+                        <div className="flex gap-1.5">
+                            {contest.supportedLanguages?.map(lang => (
+                                <span key={lang} className="px-2 py-0.5 bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-gray-300 text-xs font-bold uppercase rounded-md border border-gray-200 dark:border-zinc-700">
+                                    {lang}
+                                </span>
+                            )) || <span className="text-xs text-gray-400">EN</span>}
                         </div>
                     </div>
 
                     {/* Action Button */}
                     <button
                         onClick={handleJoinClick}
-                        disabled={joining}
-                        className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-semibold transition-all duration-300
-                        bg-gray-900 text-white hover:bg-black 
-                        dark:bg-white dark:text-black dark:hover:bg-gray-200
-                        active:scale-95 shadow-lg shadow-gray-200 dark:shadow-none disabled:opacity-70 disabled:cursor-not-allowed"
+                        disabled={joining || contest.hasJoined}
+                        className={`w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-semibold transition-all duration-300
+                        ${contest.hasJoined
+                                ? 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400 cursor-default'
+                                : 'bg-gray-900 text-white hover:bg-black dark:bg-white dark:text-black dark:hover:bg-gray-200 active:scale-95 shadow-lg shadow-gray-200 dark:shadow-none'
+                            } disabled:opacity-70 disabled:cursor-not-allowed`}
                     >
-                        {joining ? 'Joining...' : (isLive ? 'Join Contest' : 'Register Now')} {!joining && <ArrowRight size={18} />}
+                        {contest.hasJoined ? (
+                            <>
+                                <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" /> Joined
+                            </>
+                        ) : (
+                            joining ? 'Joining...' : (isLive ? 'Join Contest' : 'Register Now')
+                        )}
+                        {!contest.hasJoined && !joining && <ArrowRight size={18} />}
                     </button>
                 </div>
             </motion.div>

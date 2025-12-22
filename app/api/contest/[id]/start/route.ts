@@ -61,17 +61,47 @@ export async function POST(
         } else {
             // First time start
             const startTime = now;
-            result = new Result({
-                userId,
-                contestId,
-                score: 0,
-                status: 'InProgress',
-                startTime: startTime,
-                answers: {},
-                warningLabels: []
-            });
-            await result.save();
-            timeLeft = maxDurationSeconds;
+            try {
+                result = new Result({
+                    userId,
+                    contestId,
+                    score: 0,
+                    status: 'InProgress',
+                    startTime: startTime,
+                    answers: {},
+                    warningLabels: []
+                });
+                await result.save();
+                timeLeft = maxDurationSeconds;
+            } catch (err: any) {
+                // Handle Race Condition (Duplicate Key Error)
+                if (err.code === 11000) {
+                    // Result was created by another parallel request
+                    result = await Result.findOne({ contestId, userId });
+                    if (!result) throw err; // Should not happen if 11000 occurred
+
+                    // Treat as Rejoin
+                    isRejoin = true;
+                    if (result.status === 'Submitted') {
+                        return NextResponse.json({ success: false, error: 'Already submitted' }, { status: 400 });
+                    }
+
+                    // Calculate elapsed time for the existing result
+                    const existingStartTime = new Date(result.startTime || result.createdAt);
+                    const elapsedSeconds = Math.floor((now.getTime() - existingStartTime.getTime()) / 1000);
+                    let remaining = maxDurationSeconds - elapsedSeconds;
+
+                    // Apply 40% Cap Rule for Re-join (Same logic as above)
+                    const capSeconds = Math.floor(maxDurationSeconds * 0.40);
+                    if (remaining > capSeconds) {
+                        remaining = capSeconds;
+                    }
+                    timeLeft = remaining;
+
+                } else {
+                    throw err;
+                }
+            }
         }
 
         // Also ensure timeLeft doesn't exceed absolute contest end time

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import ConfirmationModal from '@/components/ui/ConfirmationModal';
 import { Loader2, User, Trophy, AlertTriangle, Shield, Clock, Calendar, LogOut, Lock, RefreshCcw } from 'lucide-react';
+import ContestCalendar from '@/components/ContestCalendar';
 
 export default function ProfilePage() {
     const router = useRouter();
@@ -131,6 +132,38 @@ export default function ProfilePage() {
         }
     };
 
+    // Calendar State
+    const [selectedDate, setSelectedDate] = useState(new Date());
+    const [activeTab, setActiveTab] = useState<'current' | 'next'>('current');
+
+    const isSameDay = (date1: Date, date2: Date) => {
+        return date1.getFullYear() === date2.getFullYear() &&
+            date1.getMonth() === date2.getMonth() &&
+            date1.getDate() === date2.getDate();
+    };
+
+    const getFilteredContests = () => {
+        if (!user || !user.joinedContests) return [];
+
+        const targetDate = new Date(selectedDate);
+        if (activeTab === 'next') {
+            targetDate.setDate(targetDate.getDate() + 1);
+        }
+
+        return user.joinedContests.filter((contest: any) => {
+            const contestDate = new Date(contest.startTime);
+            return isSameDay(contestDate, targetDate);
+        });
+    };
+
+    const nextDate = new Date(selectedDate);
+    nextDate.setDate(nextDate.getDate() + 1);
+
+    const filteredContests = getFilteredContests();
+
+    // Get dates with contests for calendar highlighting
+    const contestDates = user?.joinedContests?.map((c: any) => c.startTime) || [];
+
     if (loading) {
         return (
             <div className="min-h-screen bg-gray-50 dark:bg-zinc-950 flex items-center justify-center">
@@ -234,20 +267,41 @@ export default function ProfilePage() {
 
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    {/* Recent Contests */}
+                    {/* Recent Contests - Left / Main Content */}
                     <div className="lg:col-span-2 space-y-6">
-                        <div className="flex items-center justify-between">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                             <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
                                 <Trophy className="text-yellow-500" size={20} /> Joined Contests
                             </h2>
-                            <span className="text-xs font-semibold text-gray-500 bg-gray-100 dark:bg-zinc-800 px-2 py-1 rounded-md">
-                                {user.joinedContests?.length || 0} Total
-                            </span>
+
+                            {/* Tabs */}
+                            <div className="bg-gray-100 dark:bg-zinc-800/50 p-1 rounded-xl flex">
+                                <button
+                                    onClick={() => setActiveTab('current')}
+                                    className={`px-4 py-1.5 text-sm font-semibold rounded-lg transition-all ${activeTab === 'current'
+                                        ? 'bg-white dark:bg-zinc-700 text-blue-600 dark:text-blue-400 shadow-sm'
+                                        : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                                        }`}
+                                >
+                                    {selectedDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                                    <span className="ml-1 text-xs opacity-70">(Today)</span>
+                                </button>
+                                <button
+                                    onClick={() => setActiveTab('next')}
+                                    className={`px-4 py-1.5 text-sm font-semibold rounded-lg transition-all ${activeTab === 'next'
+                                        ? 'bg-white dark:bg-zinc-700 text-blue-600 dark:text-blue-400 shadow-sm'
+                                        : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                                        }`}
+                                >
+                                    {nextDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                                    <span className="ml-1 text-xs opacity-70">(Next)</span>
+                                </button>
+                            </div>
                         </div>
 
-                        {user.joinedContests && user.joinedContests.length > 0 ? (
+                        {filteredContests && filteredContests.length > 0 ? (
                             <div className="space-y-4">
-                                {user.joinedContests.map((contest: any) => {
+                                {filteredContests.map((contest: any) => {
                                     const isLeaveable = canLeave(contest.startTime);
                                     const isCompleted = user.completedContests?.includes(contest._id);
 
@@ -297,32 +351,56 @@ export default function ProfilePage() {
                                         <div key={contest._id} className={`group bg-white dark:bg-zinc-900 p-4 md:p-5 rounded-2xl border transition-all duration-300 ${isCompleted ? 'border-green-200 dark:border-green-900/30' : 'border-gray-200 dark:border-zinc-800 hover:border-blue-500/30 dark:hover:border-blue-500/30 shadow-sm hover:shadow-md'}`}>
                                             <div className="flex flex-col md:flex-row gap-4 md:items-center justify-between">
                                                 <div className="space-y-2">
-                                                    <div className="flex items-start justify-between md:justify-start gap-3">
-                                                        <h3 className="font-bold text-gray-900 dark:text-gray-100 text-lg line-clamp-1 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                                                            {contest.title}
-                                                        </h3>
-                                                        {/* Mobile Status Badge */}
-                                                        <span className={`md:hidden px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide border ${statusColor}`}>
-                                                            {status}
-                                                        </span>
-                                                    </div>
-
-                                                    <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-gray-500 dark:text-gray-400">
-                                                        <span className="flex items-center gap-1.5">
-                                                            <Calendar size={14} className="text-gray-400" />
-                                                            {new Date(contest.startTime).toLocaleDateString()}
-                                                        </span>
-                                                        <span className="flex items-center gap-1.5">
-                                                            <Clock size={14} className="text-gray-400" />
-                                                            {contest.duration} min
-                                                        </span>
-
-                                                        {!isCompleted && now < start && (
-                                                            <span className="flex items-center gap-1.5 text-orange-500 font-medium">
-                                                                <Clock size={14} />
-                                                                Starts in {Math.ceil((start - now) / (1000 * 60 * 60))}h
+                                                    <div className="space-y-3 w-full">
+                                                        <div className="flex items-start justify-between md:justify-start gap-3">
+                                                            <h3 className="font-bold text-gray-900 dark:text-gray-100 text-lg line-clamp-1 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                                                                {contest.title}
+                                                            </h3>
+                                                            {/* Mobile Status Badge */}
+                                                            <span className={`md:hidden px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide border ${statusColor}`}>
+                                                                {status}
                                                             </span>
-                                                        )}
+                                                        </div>
+
+                                                        <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2 pr-4 hidden md:block">
+                                                            {contest.description}
+                                                        </p>
+
+                                                        <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-gray-500 dark:text-gray-400">
+                                                            <span className="flex items-center gap-1.5">
+                                                                <Calendar size={14} className="text-gray-400" />
+                                                                {new Date(contest.startTime).toLocaleDateString()}
+                                                            </span>
+                                                            <span className="flex items-center gap-1.5">
+                                                                <Clock size={14} className="text-gray-400" />
+                                                                {contest.duration} min
+                                                            </span>
+                                                            {contest.difficulty && (
+                                                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide border ${contest.difficulty === 'Easy' ? 'bg-green-50 text-green-600 border-green-100 dark:bg-green-900/20 dark:border-green-800' :
+                                                                        contest.difficulty === 'Medium' ? 'bg-yellow-50 text-yellow-600 border-yellow-100 dark:bg-yellow-900/20 dark:border-yellow-800' :
+                                                                            'bg-red-50 text-red-600 border-red-100 dark:bg-red-900/20 dark:border-red-800'
+                                                                    }`}>
+                                                                    {contest.difficulty}
+                                                                </span>
+                                                            )}
+                                                            {contest.category && (
+                                                                <span className="flex items-center gap-1.5 px-2 py-0.5 bg-gray-100 dark:bg-zinc-800 rounded text-[10px] font-bold uppercase tracking-wide border border-gray-200 dark:border-zinc-700">
+                                                                    {contest.category}
+                                                                </span>
+                                                            )}
+                                                            {contest.slots && (
+                                                                <span className="flex items-center gap-1.5 text-xs">
+                                                                    {contest.slots} Slots
+                                                                </span>
+                                                            )}
+
+                                                            {!isCompleted && now < start && (
+                                                                <span className="flex items-center gap-1.5 text-orange-500 font-medium ml-auto md:ml-0">
+                                                                    <Clock size={14} />
+                                                                    Starts in {Math.ceil((start - now) / (1000 * 60 * 60))}h
+                                                                </span>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 </div>
 
@@ -362,19 +440,19 @@ export default function ProfilePage() {
                                 })}
                             </div>
                         ) : (
-                            <div className="bg-white dark:bg-zinc-900 p-12 rounded-2xl border border-dashed border-gray-300 dark:border-zinc-700 text-center">
+                            <div className="bg-white dark:bg-zinc-900 p-12 rounded-2xl border border-dashed border-gray-300 dark:border-zinc-700 text-center animate-in fade-in zoom-in-50 duration-300">
                                 <div className="w-16 h-16 bg-gray-50 dark:bg-zinc-800 rounded-full flex items-center justify-center mx-auto mb-4">
                                     <Trophy className="text-gray-400 dark:text-zinc-500" size={32} />
                                 </div>
-                                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">No Contests Joined Yet</h3>
+                                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">No Contests for {activeTab === 'current' ? 'Selected Date' : 'Next Day'}</h3>
                                 <p className="text-gray-500 dark:text-gray-400 max-w-sm mx-auto mb-6">
-                                    You haven't participated in any contests. Join one now to start building your profile!
+                                    There are no contests scheduled for {activeTab === 'current' ? selectedDate.toLocaleDateString() : nextDate.toLocaleDateString()}.
                                 </p>
                                 <button
                                     onClick={() => router.push('/contest')}
                                     className="px-6 py-2.5 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-500/20 transition-all active:scale-95"
                                 >
-                                    Browse Contests
+                                    Browse All Contests
                                 </button>
                             </div>
                         )}
@@ -382,7 +460,14 @@ export default function ProfilePage() {
 
                     {/* Sidebar / Info */}
                     <div className="space-y-6">
-                        <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl border border-gray-200 dark:border-zinc-800 shadow-sm sticky top-24">
+                        {/* Calendar Component */}
+                        <ContestCalendar
+                            selectedDate={selectedDate}
+                            onDateSelect={setSelectedDate}
+                            highlightDates={contestDates}
+                        />
+
+                        <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl border border-gray-200 dark:border-zinc-800 shadow-sm">
                             <h3 className="font-bold mb-4 text-gray-900 dark:text-white flex items-center gap-2">
                                 <User size={18} /> Account Details
                             </h3>

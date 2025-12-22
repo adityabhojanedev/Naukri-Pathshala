@@ -2,7 +2,7 @@
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import Contest from '@/models/Contest';
-import '@/models/Question'; // Helper to ensure model registration for populate
+import Question from '@/models/Question';
 
 // GET Single Contest
 export async function GET(request: Request, props: { params: Promise<{ id: string }> }) {
@@ -62,7 +62,13 @@ export async function DELETE(request: Request, props: { params: Promise<{ id: st
         if (!contest) {
             return NextResponse.json({ success: false, error: 'Contest not found' }, { status: 404 });
         }
-        return NextResponse.json({ success: true, message: 'Contest deleted' }, { status: 200 });
+
+        // Cascade Delete Questions
+        if (contest.questions && contest.questions.length > 0) {
+            await Question.deleteMany({ _id: { $in: contest.questions } });
+        }
+
+        return NextResponse.json({ success: true, message: 'Contest and associated questions deleted' }, { status: 200 });
     } catch (error) {
         return NextResponse.json({ success: false, error: 'Failed to delete contest' }, { status: 500 });
     }

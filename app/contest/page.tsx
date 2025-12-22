@@ -8,12 +8,15 @@ import { motion } from 'framer-motion';
 interface Contest {
     _id: string;
     title: string;
+    description: string;
+    supportedLanguages: string[];
     startTime: string;
     duration: number;
     difficulty: string;
     category: string;
     status: string;
     slots: number;
+    hasJoined?: boolean;
 }
 
 export default function ContestsListPage() {
@@ -21,7 +24,13 @@ export default function ContestsListPage() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        fetch('/api/contests')
+        const token = localStorage.getItem('token');
+        const headers: HeadersInit = {};
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+
+        fetch('/api/contests', { headers })
             .then(res => res.json())
             .then(data => {
                 if (data.success) {

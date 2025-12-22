@@ -41,6 +41,8 @@ export default function ContestLivePage(props: { params: Promise<{ id: string }>
 
     const [availableLanguages, setAvailableLanguages] = useState<string[]>(['en']);
 
+    const [initialTime, setInitialTime] = useState(0);
+
     useEffect(() => {
         const initContest = async () => {
             const token = localStorage.getItem('token');
@@ -76,14 +78,13 @@ export default function ContestLivePage(props: { params: Promise<{ id: string }>
                             cancelText: '',
                             onConfirm: () => { }
                         });
-                        // We must set questions to avoid errors in submit if any logic depends on it, 
-                        // though submit just sends 'answers' which are empty here.
                         setQuestions(contestData.data.questions || []);
                         handleSubmit(true);
                         return; // Stop loading rest of UI
                     }
 
                     setTimeLeft(startData.timeLeft);
+                    setInitialTime(startData.timeLeft); // Store initial time
                     setAvailableLanguages(startData.supportedLanguages || ['en']);
 
                     // If re-join with low time, maybe show a toast?
@@ -201,6 +202,9 @@ export default function ContestLivePage(props: { params: Promise<{ id: string }>
         setSubmitting(true);
         const token = localStorage.getItem('token');
 
+        // Calculate Time Taken
+        const timeTaken = initialTime - timeLeft;
+
         try {
             const res = await fetch(`/api/contest/${params.id}/submit`, {
                 method: 'POST',
@@ -208,7 +212,7 @@ export default function ContestLivePage(props: { params: Promise<{ id: string }>
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
                 },
-                body: JSON.stringify({ answers })
+                body: JSON.stringify({ answers, timeTaken })
             });
 
             const data = await res.json();
@@ -331,8 +335,15 @@ export default function ContestLivePage(props: { params: Promise<{ id: string }>
                 <main className="flex-1 overflow-y-auto p-4 md:p-8 relative">
                     <div className="max-w-3xl mx-auto">
                         <div className="mb-6 flex justify-between items-center">
-                            <span className="text-gray-500 font-medium">Question {currentQuestionIndex + 1} of {questions.length}</span>
-                            <span className="text-sm font-mono text-gray-400">ID: {currentQuestion?._id}</span>
+                            <div className="flex flex-col gap-1">
+                                <span className="text-gray-500 font-medium">Question {currentQuestionIndex + 1} of {questions.length}</span>
+                                {currentQuestion?.subject && (
+                                    <span className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 text-xs px-2 py-0.5 rounded-full w-fit font-bold uppercase tracking-wider">
+                                        {currentQuestion.subject}
+                                    </span>
+                                )}
+                            </div>
+                            <span className="text-sm font-mono text-gray-400 hidden md:block">ID: {currentQuestion?._id}</span>
                         </div>
 
                         <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-sm border border-gray-200 dark:border-zinc-800 mb-6 transition-colors">

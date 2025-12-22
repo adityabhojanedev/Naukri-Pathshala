@@ -195,9 +195,10 @@ export default function Navbar() {
                                     <Link
                                         href={link.href}
                                         onClick={() => setIsMobileMenuOpen(false)}
-                                        className="text-3xl font-bold tracking-tight text-foreground/80 hover:text-primary transition-colors"
+                                        className="flex items-center justify-between w-full p-4 rounded-xl bg-secondary/50 border border-border text-lg font-semibold text-foreground/80 hover:text-primary hover:bg-secondary transition-all active:scale-95"
                                     >
                                         {link.label}
+                                        <Trophy size={18} className="text-muted-foreground" />
                                     </Link>
                                 </motion.div>
                             ))}
@@ -210,9 +211,12 @@ export default function Navbar() {
                                     <Link
                                         href="/profile"
                                         onClick={() => setIsMobileMenuOpen(false)}
-                                        className="text-3xl font-bold tracking-tight text-foreground/80 hover:text-primary transition-colors"
+                                        className="flex items-center justify-between w-full p-4 rounded-xl bg-gradient-to-r from-blue-600/10 to-indigo-600/10 border border-blue-200 dark:border-blue-900 text-lg font-semibold text-blue-600 dark:text-blue-400 hover:bg-blue-600/20 transition-all active:scale-95"
                                     >
                                         My Profile
+                                        <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-bold shadow-md">
+                                            {user.firstName ? user.firstName[0] : 'U'}
+                                        </div>
                                     </Link>
                                 </motion.div>
                             )}
