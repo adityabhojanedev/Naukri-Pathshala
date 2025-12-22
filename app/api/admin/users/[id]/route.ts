@@ -12,7 +12,12 @@ export async function PATCH(request: Request, props: { params: Promise<{ id: str
 
         const updateData: any = {};
         if (role) updateData.role = role;
-        if (typeof isVerified === 'boolean') updateData.isVerified = isVerified;
+        if (typeof isVerified === 'boolean') {
+            updateData.isVerified = isVerified;
+            if (isVerified) {
+                updateData.status = 'active';
+            }
+        }
         if (typeof isBanned === 'boolean') updateData.isBanned = isBanned;
         if (suspensionEndDate) updateData.suspensionEndDate = suspensionEndDate;
 

@@ -64,6 +64,22 @@ export default function ContestCard({ contest }: { contest: Contest }) {
                 return;
             }
 
+            if (res.status === 400 && data.error === 'Contest is full') {
+                setModalConfig({
+                    isOpen: true,
+                    title: 'Contest Full',
+                    message: 'This contest has reached its maximum capacity. Please check back later or join another contest.',
+                    type: 'info',
+                    confirmText: 'Browse Others',
+                    cancelText: '',
+                    onConfirm: () => {
+                        setModalConfig(prev => ({ ...prev, isOpen: false }));
+                        router.refresh(); // Optional: refresh to update slots if needed
+                    }
+                });
+                return;
+            }
+
             if (data.success) {
                 router.push('/profile');
             } else {

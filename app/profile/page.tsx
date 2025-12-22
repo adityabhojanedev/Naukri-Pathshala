@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import ConfirmationModal from '@/components/ui/ConfirmationModal';
-import { Loader2, User, Trophy, AlertTriangle, Shield, Clock, Calendar, LogOut, Lock } from 'lucide-react';
+import { Loader2, User, Trophy, AlertTriangle, Shield, Clock, Calendar, LogOut, Lock, RefreshCcw } from 'lucide-react';
 
 export default function ProfilePage() {
     const router = useRouter();
@@ -28,36 +28,40 @@ export default function ProfilePage() {
         onConfirm: () => { }
     });
 
-    useEffect(() => {
+    const fetchProfile = async () => {
         const token = localStorage.getItem('token');
         if (!token) {
             router.push('/login');
             return;
         }
 
-        fetch('/api/user/me', {
-            headers: { 'Authorization': `Bearer ${token}` }
-        })
-            .then(async (res) => {
-                const data = await res.json();
-                if (data.success) {
-                    setUser(data.data);
+        setLoading(true);
+        try {
+            const res = await fetch('/api/user/me', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                setUser(data.data);
+            } else {
+                console.error("Profile fetch failed:", data.error);
+                if (res.status === 401) {
+                    localStorage.removeItem('token');
+                    router.push('/login');
                 } else {
-                    console.error("Profile fetch failed:", data.error);
-                    if (res.status === 401) {
-                        localStorage.removeItem('token');
-                        router.push('/login');
-                    } else {
-                        // Don't logout for 500 or other errors, allows debugging
-                        alert(`Failed to load profile: ${data.error}`);
-                    }
+                    alert(`Failed to load profile: ${data.error}`);
                 }
-            })
-            .catch((err) => {
-                console.error("Profile fetch network error:", err);
-                // Don't logout on network error
-            })
-            .finally(() => setLoading(false));
+            }
+        } catch (err) {
+            console.error("Profile fetch network error:", err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchProfile();
     }, []);
 
     const canLeave = (startTime: string) => {
@@ -147,6 +151,9 @@ export default function ProfilePage() {
                     {/* Background decoration */}
                     <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
 
+                    {/* Refresh Button */}
+
+
                     <div className="relative">
                         <div className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-3xl md:text-5xl font-bold text-white shadow-xl shadow-blue-500/30 ring-4 ring-white dark:ring-zinc-900">
                             {user.firstName[0]}{user.lastName[0]}
@@ -171,28 +178,39 @@ export default function ProfilePage() {
                                     <span className="px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-300 text-xs font-bold uppercase tracking-wide border border-blue-100 dark:border-blue-800/50">
                                         {user.role}
                                     </span>
-                                    <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide border ${user.status === 'active'
+                                    <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide border ${user.isVerified || user.status === 'active'
                                         ? 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 border-green-100 dark:border-green-800/50'
                                         : 'bg-yellow-50 dark:bg-yellow-900/20 text-yellow-600 dark:text-yellow-400 border-yellow-100 dark:border-yellow-800/50'
                                         }`}>
-                                        {user.status}
+                                        {user.isVerified ? 'Verified' : user.status}
                                     </span>
                                 </div>
                             </div>
 
-                            {/* Stats Grid - Mobile Optimized */}
-                            <div className="grid grid-cols-3 gap-3 w-full md:w-auto mt-6 md:mt-0">
-                                <div className="bg-gray-50 dark:bg-zinc-800/50 p-3 md:p-4 rounded-xl text-center border border-gray-100 dark:border-zinc-700/50 min-w-[80px]">
-                                    <div className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">{user.stats?.level || 1}</div>
-                                    <div className="text-[10px] md:text-xs text-gray-500 uppercase tracking-wide font-semibold mt-1">Level</div>
-                                </div>
-                                <div className="bg-gray-50 dark:bg-zinc-800/50 p-3 md:p-4 rounded-xl text-center border border-gray-100 dark:border-zinc-700/50 min-w-[80px]">
-                                    <div className="text-xl md:text-2xl font-bold text-green-600 dark:text-green-500">{user.stats?.bestScore || 0}</div>
-                                    <div className="text-[10px] md:text-xs text-gray-500 uppercase tracking-wide font-semibold mt-1">Score</div>
-                                </div>
-                                <div className="bg-gray-50 dark:bg-zinc-800/50 p-3 md:p-4 rounded-xl text-center border border-gray-100 dark:border-zinc-700/50 min-w-[80px]">
-                                    <div className="text-xl md:text-2xl font-bold text-purple-600 dark:text-purple-500">{user.stats?.totalContentAttended || 0}</div>
-                                    <div className="text-[10px] md:text-xs text-gray-500 uppercase tracking-wide font-semibold mt-1">Contests</div>
+                            {/* Stats Grid & Refresh - Mobile Optimized */}
+                            <div className="flex flex-col items-center md:items-end gap-4 w-full md:w-auto mt-6 md:mt-0">
+                                <button
+                                    onClick={fetchProfile}
+                                    className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-zinc-800/50 hover:bg-white dark:hover:bg-zinc-800 hover:text-blue-600 dark:hover:text-blue-400 border border-gray-200 dark:border-zinc-700 rounded-lg transition-all active:scale-95"
+                                    title="Refresh Profile"
+                                >
+                                    <RefreshCcw size={14} className={loading && user ? "animate-spin" : ""} />
+                                    <span>Refresh Profile</span>
+                                </button>
+
+                                <div className="grid grid-cols-3 gap-3 w-full">
+                                    <div className="bg-gray-50 dark:bg-zinc-800/50 p-3 md:p-4 rounded-xl text-center border border-gray-100 dark:border-zinc-700/50 min-w-[80px]">
+                                        <div className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">{user.stats?.level || 1}</div>
+                                        <div className="text-[10px] md:text-xs text-gray-500 uppercase tracking-wide font-semibold mt-1">Level</div>
+                                    </div>
+                                    <div className="bg-gray-50 dark:bg-zinc-800/50 p-3 md:p-4 rounded-xl text-center border border-gray-100 dark:border-zinc-700/50 min-w-[80px]">
+                                        <div className="text-xl md:text-2xl font-bold text-green-600 dark:text-green-500">{user.stats?.bestScore || 0}</div>
+                                        <div className="text-[10px] md:text-xs text-gray-500 uppercase tracking-wide font-semibold mt-1">Score</div>
+                                    </div>
+                                    <div className="bg-gray-50 dark:bg-zinc-800/50 p-3 md:p-4 rounded-xl text-center border border-gray-100 dark:border-zinc-700/50 min-w-[80px]">
+                                        <div className="text-xl md:text-2xl font-bold text-purple-600 dark:text-purple-500">{user.stats?.totalContentAttended || 0}</div>
+                                        <div className="text-[10px] md:text-xs text-gray-500 uppercase tracking-wide font-semibold mt-1">Contests</div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
