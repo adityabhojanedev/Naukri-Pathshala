@@ -109,6 +109,13 @@ export default function ResultPage(props: { params: Promise<{ id: string }> }) {
                             {contestEnded ? <BookOpen size={20} /> : <Lock size={20} />}
                             {contestEnded ? 'View Answer Key' : 'Answer Key Locked'}
                         </button>
+                        <button
+                            onClick={() => window.location.reload()} // Simple reload to refetch everything
+                            className="bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-gray-300 p-3 rounded-xl hover:bg-gray-200 dark:hover:bg-zinc-700 transition"
+                            title="Refresh Results"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-rotate-cw"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" /><path d="M21 3v5h-5" /></svg>
+                        </button>
                     </div>
                     {!contestEnded && (
                         <p className="text-xs text-gray-400 mt-3">
