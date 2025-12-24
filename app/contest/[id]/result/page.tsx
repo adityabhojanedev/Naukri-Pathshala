@@ -109,24 +109,24 @@ export default function ResultPage(props: { params: Promise<{ id: string }> }) {
                         <button
                             disabled={!contestEnded}
                             onClick={() => router.push(`/contest/${params.id}/analysis`)}
-                            className={`px-6 py-3 rounded-xl font-bold flex items-center gap-2 transition-all
+                            className={`px-4 py-3 rounded-xl font-bold flex items-center gap-2 transition-all text-xs md:text-sm
                             ${contestEnded
                                     ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-500/30'
                                     : 'bg-gray-100 text-gray-400 cursor-not-allowed dark:bg-zinc-800 dark:text-zinc-600'}`}
                         >
-                            {contestEnded ? <BookOpen size={20} /> : <Lock size={20} />}
+                            {contestEnded ? <BookOpen size={16} /> : <Lock size={16} />}
                             {contestEnded ? 'View Answer Key' : 'Answer Key Locked'}
                         </button>
                         <button
                             onClick={handleRefresh}
                             disabled={refreshing}
-                            className={`flex items-center gap-2 bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-gray-300 px-4 py-3 rounded-xl hover:bg-gray-200 dark:hover:bg-zinc-700 transition ${refreshing ? 'opacity-75 cursor-not-allowed' : ''}`}
+                            className={`flex items-center gap-2 bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-gray-300 px-4 py-3 rounded-xl hover:bg-gray-200 dark:hover:bg-zinc-700 transition text-xs md:text-sm ${refreshing ? 'opacity-75 cursor-not-allowed' : ''}`}
                             title="Refresh Results"
                         >
                             <svg
                                 xmlns="http://www.w3.org/2000/svg"
-                                width="20"
-                                height="20"
+                                width="16"
+                                height="16"
                                 viewBox="0 0 24 24"
                                 fill="none"
                                 stroke="currentColor"

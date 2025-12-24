@@ -30,7 +30,7 @@ export async function GET(
         if (!contest) return NextResponse.json({ error: "Contest not found" }, { status: 404 });
 
         const now = new Date();
-        const contestEnded = new Date(contest.endTime) < now || contest.status === 'Completed';
+        const contestEnded = new Date(contest.endTime) < now || contest.status?.toLowerCase() === 'completed';
 
         // Fetch Leaderboard (Top 50) - Existing Results
         const results = await Result.find({ contestId })

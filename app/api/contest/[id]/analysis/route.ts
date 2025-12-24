@@ -27,7 +27,7 @@ export async function GET(
         // TIME CHECK: Only allow if contest ended or status is completed
         const now = new Date();
         // Check if date is passed OR status is completed
-        if (new Date(contest.endTime) > now && contest.status !== 'completed') {
+        if (new Date(contest.endTime) > now && contest.status?.toLowerCase() !== 'completed') {
             return NextResponse.json({ error: "Analysis Locked" }, { status: 403 });
         }
 
