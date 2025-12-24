@@ -10,7 +10,26 @@ export async function DELETE(
     try {
         await dbConnect();
         const { id: resultId } = await params;
+        const url = new URL(req.url);
+        const contestIdQuery = url.searchParams.get('contestId');
 
+        // Handle "Absent" Users (No Result Document)
+        if (resultId.startsWith('absent_')) {
+            const userId = resultId.split('_')[1];
+
+            if (!contestIdQuery) {
+                return NextResponse.json({ success: false, error: 'Contest ID required for absent users' }, { status: 400 });
+            }
+
+            // Remove from Joined Contests (effectively "un-joining" them)
+            await User.findByIdAndUpdate(userId, {
+                $pull: { joinedContests: contestIdQuery }
+            });
+
+            return NextResponse.json({ success: true, message: 'Absent user removed from contest' });
+        }
+
+        // Normal Result Deletion
         // Find result to get userId and contestId
         const result = await Result.findById(resultId);
         if (!result) {
@@ -23,12 +42,6 @@ export async function DELETE(
         await Result.findByIdAndDelete(resultId);
 
         // Update User: Remove from completedContests
-        // This allows them to retake? Or should we keep it? 
-        // "remove user from leaderboard" - usually implies disqualification. 
-        // If we leave it in completedContests, they can't retake but won't have a result.
-        // If we remove it, they can retake.
-        // Let's remove from completedContests to be clean (effectively deleting the submission).
-        // If admin wants to just ban, they can use Warning/Ban.
         await User.findByIdAndUpdate(userId, {
             $pull: { completedContests: contestId },
             $inc: { 'stats.totalContentAttended': -1 } // Optional: decrement stats

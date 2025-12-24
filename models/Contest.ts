@@ -59,6 +59,26 @@ const ContestSchema = new Schema({
             message: 'A contest must support at least one language.'
         }
     },
+    syllabus: {
+        type: String,
+        default: '',
+    },
+    marksPerQuestion: {
+        type: Number,
+        default: 4,
+    },
+    negativeMarking: {
+        type: Number,
+        default: 1, // Positive value representing deduction
+    },
+    strictMode: {
+        type: Boolean,
+        default: true,
+    },
+    submitWindow: {
+        type: Number, // in minutes (e.g., 10 means allow submit only in last 10 mins)
+        default: 10,
+    },
     questions: [{
         type: Schema.Types.ObjectId,
         ref: 'Question',

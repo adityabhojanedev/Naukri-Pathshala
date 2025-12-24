@@ -18,9 +18,12 @@ interface ContestFormData {
     timePerQuestion: number;
     supportedLanguages: string[];
     status: string;
+    marksPerQuestion: number;
+    negativeMarking: number;
+    strictMode: boolean;
+    submitWindow: number;
     questions?: any[];
 }
-
 const SUPPORTED_LANGUAGES = [
     { code: 'en', name: 'English' },
     { code: 'hi', name: 'Hindi' },
@@ -42,6 +45,10 @@ const SAMPLE_JSON = {
     timePerQuestion: 120,
     supportedLanguages: ["en", "hi"],
     status: "Draft",
+    marksPerQuestion: 4,
+    negativeMarking: 1,
+    strictMode: true,
+    submitWindow: 10,
     questions: [
         {
             "subject": "English",
@@ -108,6 +115,10 @@ export default function ContestWizard({ existingContestId }: { existingContestId
         timePerQuestion: 60,
         supportedLanguages: ['en'],
         status: 'Draft',
+        marksPerQuestion: 4,
+        negativeMarking: 1,
+        strictMode: true,
+        submitWindow: 10,
         questions: []
     });
 
@@ -115,11 +126,13 @@ export default function ContestWizard({ existingContestId }: { existingContestId
     const [isJsonMode, setIsJsonMode] = useState(false);
     const [jsonText, setJsonText] = useState('');
 
-    // Safe Date Parser
+    // Safe Date Parser (Converts UTC to Local String for Input)
     const formatDateForInput = (dateString: string | undefined) => {
         if (!dateString) return '';
         try {
-            return new Date(dateString).toISOString().slice(0, 16);
+            const date = new Date(dateString);
+            const localDate = new Date(date.getTime() - (date.getTimezoneOffset() * 60000));
+            return localDate.toISOString().slice(0, 16);
         } catch (e) {
             console.error('Date parsing error', dateString, e);
             return '';
@@ -147,7 +160,11 @@ export default function ContestWizard({ existingContestId }: { existingContestId
                             timePerQuestion: c.timePerQuestion || 60,
                             supportedLanguages: c.supportedLanguages || ['en'],
                             status: c.status || 'Draft',
-                            questions: c.questions || []
+                            questions: c.questions || [],
+                            marksPerQuestion: c.marksPerQuestion || 4,
+                            negativeMarking: c.negativeMarking !== undefined ? c.negativeMarking : 1,
+                            strictMode: c.strictMode !== undefined ? c.strictMode : true,
+                            submitWindow: c.submitWindow || 10
                         });
                         setContestId(c._id);
                     } else {
@@ -365,6 +382,27 @@ export default function ContestWizard({ existingContestId }: { existingContestId
                                 <option value="Medium">Medium</option>
                                 <option value="Hard">Hard</option>
                             </select>
+                        </div>
+
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 md:col-span-2">
+                            <div>
+                                <label className="block text-xs md:text-sm font-medium mb-1.5 md:mb-2 text-gray-700 dark:text-gray-300">Marks/Q</label>
+                                <input type="number" required value={formData.marksPerQuestion} onChange={e => setFormData({ ...formData, marksPerQuestion: Number(e.target.value) })} className="w-full p-2.5 md:p-3 bg-gray-50 dark:bg-zinc-800 rounded-xl border border-gray-200 dark:border-zinc-700 focus:ring-2 focus:ring-blue-500 outline-none text-sm transition-all" />
+                            </div>
+                            <div>
+                                <label className="block text-xs md:text-sm font-medium mb-1.5 md:mb-2 text-gray-700 dark:text-gray-300">(-) Marking</label>
+                                <input type="number" step="0.25" required value={formData.negativeMarking} onChange={e => setFormData({ ...formData, negativeMarking: Number(e.target.value) })} className="w-full p-2.5 md:p-3 bg-gray-50 dark:bg-zinc-800 rounded-xl border border-gray-200 dark:border-zinc-700 focus:ring-2 focus:ring-blue-500 outline-none text-sm transition-all" />
+                            </div>
+                            <div>
+                                <label className="block text-xs md:text-sm font-medium mb-1.5 md:mb-2 text-gray-700 dark:text-gray-300">Submit Window (m)</label>
+                                <input type="number" required value={formData.submitWindow} onChange={e => setFormData({ ...formData, submitWindow: Number(e.target.value) })} className="w-full p-2.5 md:p-3 bg-gray-50 dark:bg-zinc-800 rounded-xl border border-gray-200 dark:border-zinc-700 focus:ring-2 focus:ring-blue-500 outline-none text-sm transition-all" disabled={!formData.strictMode} />
+                            </div>
+                            <div className="flex items-end pb-3">
+                                <label className="flex items-center gap-2 cursor-pointer select-none">
+                                    <input type="checkbox" checked={formData.strictMode} onChange={e => setFormData({ ...formData, strictMode: e.target.checked })} className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+                                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Strict Mode</span>
+                                </label>
+                            </div>
                         </div>
 
                         <div>

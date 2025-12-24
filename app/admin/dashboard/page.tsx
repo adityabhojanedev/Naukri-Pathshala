@@ -484,8 +484,44 @@ function ContestList() {
         });
     };
 
+
+    // Filter State
+    const [searchTerm, setSearchTerm] = useState('');
+    const [filterStatus, setFilterStatus] = useState('All');
+
+    const filteredContests = contests.filter(c => {
+        const matchesSearch = c.title.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesStatus = filterStatus === 'All' || c.status === filterStatus;
+        return matchesSearch && matchesStatus;
+    });
+
     return (
         <div className="overflow-x-auto min-h-[400px]">
+            {/* Filters */}
+            <div className="p-4 border-b border-gray-200 dark:border-zinc-800 flex gap-4 bg-gray-50/50 dark:bg-zinc-800/10">
+                <div className="relative flex-1 max-w-sm">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                    <input
+                        type="text"
+                        placeholder="Search contests..."
+                        value={searchTerm}
+                        onChange={e => setSearchTerm(e.target.value)}
+                        className="w-full pl-9 pr-4 py-2 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                    />
+                </div>
+                <select
+                    value={filterStatus}
+                    onChange={e => setFilterStatus(e.target.value)}
+                    className="px-3 py-2 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                >
+                    <option value="All">All Status</option>
+                    <option value="Active">Active</option>
+                    <option value="Upcoming">Upcoming</option>
+                    <option value="Completed">Completed</option>
+                    <option value="Draft">Draft</option>
+                </select>
+            </div>
+
             <table className="w-full text-left min-w-[800px]">
                 <thead className="bg-gray-50/50 dark:bg-zinc-800/20 border-b border-gray-200 dark:border-zinc-800">
                     <tr>
@@ -499,18 +535,18 @@ function ContestList() {
                 </thead>
                 <tbody className="divide-y divide-gray-200 dark:divide-zinc-800">
                     <AnimatePresence>
-                        {contests.length === 0 ? (
+                        {filteredContests.length === 0 ? (
                             !loading && (
                                 <motion.tr
                                     initial={{ opacity: 0 }}
                                     animate={{ opacity: 1 }}
                                     exit={{ opacity: 0 }}
                                 >
-                                    <td colSpan={6} className="px-6 py-12 text-center text-gray-500">No contests found. Create one.</td>
+                                    <td colSpan={6} className="px-6 py-12 text-center text-gray-500">No contests found matching filters.</td>
                                 </motion.tr>
                             )
                         ) : (
-                            contests.map((contest, index) => (
+                            filteredContests.map((contest, index) => (
                                 <motion.tr
                                     key={contest._id}
                                     initial={{ opacity: 0, y: 10 }}
@@ -528,7 +564,10 @@ function ContestList() {
                                         </div>
                                     </td>
                                     <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                                        {new Date(contest.startTime).toLocaleDateString()}
+                                        {new Date(contest.startTime).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                        <span className="text-xs text-gray-400 block mt-0.5">
+                                            {new Date(contest.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                        </span>
                                     </td>
                                     <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{contest.duration}m</td>
                                     <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{contest.category}</td>

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2, ChevronLeft, ChevronRight, Menu, X, Timer } from 'lucide-react';
+import { Loader2, ChevronLeft, ChevronRight, Menu, X, Timer, Lock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ConfirmationModal from '@/components/ui/ConfirmationModal';
 
@@ -28,6 +28,7 @@ export default function ContestLivePage(props: { params: Promise<{ id: string }>
         type: 'danger' | 'warning' | 'success' | 'info';
         confirmText: string;
         cancelText: string;
+        autoClose?: boolean;
         onConfirm: () => void;
     }>({
         isOpen: false,
@@ -58,6 +59,18 @@ export default function ContestLivePage(props: { params: Promise<{ id: string }>
                 if (!contestData.success) throw new Error("Contest load failed");
 
                 setContest(contestData.data);
+
+                // STRICT MODE: Enforce Fullscreen
+                if (contestData.data.strictMode) {
+                    if (document.documentElement.requestFullscreen) {
+                        try {
+                            await document.documentElement.requestFullscreen();
+                        } catch (err) {
+                            console.error("Fullscreen denied", err);
+                            // Maybe force user to click button to enter fullscreen?
+                        }
+                    }
+                }
 
                 // 2. Start/Sync Contest Session (Time Tracking)
                 const startRes = await fetch(`/api/contest/${params.id}/start`, {
@@ -168,8 +181,44 @@ export default function ContestLivePage(props: { params: Promise<{ id: string }>
         return () => {
             document.removeEventListener("visibilitychange", handleVisibilityChange);
             window.removeEventListener("beforeunload", handleBeforeUnload);
+
+            // Cleanup Strict Listeners
+            if (contest?.strictMode) {
+                document.removeEventListener('contextmenu', preventDefault);
+                document.removeEventListener('copy', preventDefault);
+                document.removeEventListener('cut', preventDefault);
+                document.removeEventListener('paste', preventDefault);
+            }
         };
-    }, [params.id, router]);
+    }, [params.id, router, contest?.strictMode]); // Added contest dependency for strict listeners
+
+    const [isFullscreen, setIsFullscreen] = useState(false);
+
+    // Strict Mode: Action Preventer & Fullscreen Listener
+    const preventDefault = (e: Event) => e.preventDefault();
+    const handleFullscreenChange = () => {
+        setIsFullscreen(!!document.fullscreenElement);
+    };
+
+    useEffect(() => {
+        if (contest?.strictMode) {
+            document.addEventListener('contextmenu', preventDefault);
+            document.addEventListener('copy', preventDefault);
+            document.addEventListener('cut', preventDefault);
+            document.addEventListener('paste', preventDefault);
+
+            // Check initial state
+            setIsFullscreen(!!document.fullscreenElement);
+            document.addEventListener('fullscreenchange', handleFullscreenChange);
+        }
+        return () => {
+            document.removeEventListener('contextmenu', preventDefault);
+            document.removeEventListener('copy', preventDefault);
+            document.removeEventListener('cut', preventDefault);
+            document.removeEventListener('paste', preventDefault);
+            document.removeEventListener('fullscreenchange', handleFullscreenChange);
+        };
+    }, [contest?.strictMode]);
 
     useEffect(() => {
         if (!loading && timeLeft > 0) {
@@ -186,6 +235,20 @@ export default function ContestLivePage(props: { params: Promise<{ id: string }>
     };
 
     const confirmSubmit = () => {
+        // Strict Mode: Early Submit Check
+        if (contest?.strictMode && timeLeft > (contest.submitWindow * 60)) {
+            setModalConfig({
+                isOpen: true,
+                title: 'Too Early to Submit',
+                message: `Strict Mode enabled: You can only submit in the last ${contest.submitWindow} minutes of the exam.`,
+                type: 'warning',
+                confirmText: 'Okay',
+                cancelText: '',
+                onConfirm: () => setModalConfig(prev => ({ ...prev, isOpen: false }))
+            });
+            return;
+        }
+
         setModalConfig({
             isOpen: true,
             title: 'Submit Test?',
@@ -193,13 +256,27 @@ export default function ContestLivePage(props: { params: Promise<{ id: string }>
             type: 'info',
             confirmText: 'Yes, Submit',
             cancelText: 'Keep Playing',
+            autoClose: false,
             onConfirm: () => handleSubmit()
         });
     }
 
     const handleSubmit = async (force = false) => {
-        setModalConfig(prev => ({ ...prev, isOpen: false }));
-        setSubmitting(true);
+        // Show "Validating" modal via state if we want visual feedback BEFORE api call returns
+        // We do NOT setSubmitting(true) here because that triggers the full-screen loader
+        // which would unmount this modal.
+        setModalConfig({
+            isOpen: true,
+            title: 'Validating Submission...',
+            message: 'Checking exam timings and rules...',
+            type: 'info',
+            confirmText: '',
+            cancelText: '',
+            autoClose: false,
+            onConfirm: () => { }
+        });
+
+
         const token = localStorage.getItem('token');
 
         // Calculate Time Taken
@@ -217,27 +294,27 @@ export default function ContestLivePage(props: { params: Promise<{ id: string }>
 
             const data = await res.json();
             if (data.success) {
+                setModalConfig(prev => ({ ...prev, isOpen: false }));
                 router.replace(`/contest/${params.id}/result`);
             } else {
+                setSubmitting(false); // Stop loader
                 if (force) {
-                    router.replace(`/contest/${params.id}/result`); // Force exit even if save failed? Or retry?
+                    router.replace(`/contest/${params.id}/result`);
                 } else {
                     setModalConfig({
                         isOpen: true,
-                        title: 'Submission Failed',
+                        title: 'Submission Rejected',
                         message: data.error || 'Please try again.',
                         type: 'danger',
-                        confirmText: 'Retry',
-                        cancelText: 'Cancel',
-                        onConfirm: () => handleSubmit()
+                        confirmText: 'Okay',
+                        cancelText: 'Cancel', // Allow cancel to keep playing
+                        onConfirm: () => setModalConfig(prev => ({ ...prev, isOpen: false }))
                     });
-                    setSubmitting(false);
                 }
             }
         } catch (error) {
             console.error(error);
             setSubmitting(false);
-            // Show error modal if manual submit
             if (!force) {
                 setModalConfig({
                     isOpen: true,
@@ -294,9 +371,23 @@ export default function ContestLivePage(props: { params: Promise<{ id: string }>
                     <button onClick={() => setIsSidebarOpen(true)} className="md:hidden p-2 bg-gray-100 dark:bg-zinc-800 rounded-lg text-gray-700 dark:text-gray-300">
                         <Menu size={20} />
                     </button>
-                    <button onClick={confirmSubmit} className="hidden md:block px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 shadow-lg shadow-blue-500/30 transition-all active:scale-95">
-                        Submit Test
-                    </button>
+                    <div className="relative group hidden md:block">
+                        <button
+                            onClick={confirmSubmit}
+                            disabled={contest?.strictMode && timeLeft > ((contest?.submitWindow || 10) * 60)}
+                            className={`px-4 py-2 rounded-lg font-semibold shadow-lg transition-all active:scale-95
+                                ${(contest?.strictMode && timeLeft > ((contest?.submitWindow || 10) * 60))
+                                    ? 'bg-gray-200 dark:bg-zinc-800 text-gray-400 dark:text-zinc-600 cursor-not-allowed shadow-none'
+                                    : 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-500/30'}`}
+                        >
+                            Submit Test
+                        </button>
+                        {(contest?.strictMode && timeLeft > ((contest?.submitWindow || 10) * 60)) && (
+                            <div className="absolute top-full right-0 mt-2 w-48 p-2 bg-black/80 text-white text-xs rounded-lg text-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+                                Enabled in last {contest?.submitWindow || 10} mins
+                            </div>
+                        )}
+                    </div>
                 </div>
             </header>
 
@@ -334,16 +425,21 @@ export default function ContestLivePage(props: { params: Promise<{ id: string }>
 
                 <main className="flex-1 overflow-y-auto p-4 md:p-8 relative">
                     <div className="max-w-3xl mx-auto">
-                        <div className="mb-6 flex justify-between items-center">
-                            <div className="flex flex-col gap-1">
-                                <span className="text-gray-500 font-medium">Question {currentQuestionIndex + 1} of {questions.length}</span>
-                                {currentQuestion?.subject && (
-                                    <span className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 text-xs px-2 py-0.5 rounded-full w-fit font-bold uppercase tracking-wider">
-                                        {currentQuestion.subject}
-                                    </span>
-                                )}
+                        <div className="mb-6 flex justify-between items-start gap-4">
+                            <div>
+                                <h2 className="text-lg md:text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-400">
+                                    Question {currentQuestionIndex + 1} <span className="text-gray-400 text-sm font-normal">/ {questions.length}</span>
+                                </h2>
+                                <p className="text-[10px] md:text-xs font-mono text-gray-400 mt-1 select-all">
+                                    ID: {currentQuestion?._id}
+                                </p>
                             </div>
-                            <span className="text-sm font-mono text-gray-400 hidden md:block">ID: {currentQuestion?._id}</span>
+
+                            {currentQuestion?.subject && (
+                                <span className="shrink-0 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 text-[10px] md:text-xs px-2.5 py-1 rounded-full font-bold uppercase tracking-wider border border-blue-200 dark:border-blue-800 shadow-sm">
+                                    {currentQuestion.subject}
+                                </span>
+                            )}
                         </div>
 
                         <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-sm border border-gray-200 dark:border-zinc-800 mb-6 transition-colors">
@@ -391,12 +487,24 @@ export default function ContestLivePage(props: { params: Promise<{ id: string }>
                             </button>
 
                             {currentQuestionIndex === questions.length - 1 ? (
-                                <button
-                                    onClick={confirmSubmit}
-                                    className="px-8 py-3 rounded-xl bg-green-600 text-white hover:bg-green-700 shadow-lg shadow-green-500/20 font-bold transition-all active:scale-95"
-                                >
-                                    Submit Test
-                                </button>
+                                <div className="relative group">
+                                    <button
+                                        onClick={confirmSubmit}
+                                        disabled={contest?.strictMode && timeLeft > ((contest?.submitWindow || 10) * 60)}
+                                        className={`px-8 py-3 rounded-xl font-bold transition-all active:scale-95 shadow-lg
+                                            ${(contest?.strictMode && timeLeft > ((contest?.submitWindow || 10) * 60))
+                                                ? 'bg-gray-300 dark:bg-zinc-700 text-gray-500 dark:text-zinc-500 cursor-not-allowed'
+                                                : 'bg-green-600 text-white hover:bg-green-700 shadow-green-500/20'}`}
+                                    >
+                                        Submit Test
+                                    </button>
+                                    {/* Tooltip for Disabled State */}
+                                    {(contest?.strictMode && timeLeft > ((contest?.submitWindow || 10) * 60)) && (
+                                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-2 bg-black/80 text-white text-xs rounded-lg text-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                                            Submission allowed in last {contest?.submitWindow || 10} minutes.
+                                        </div>
+                                    )}
+                                </div>
                             ) : (
                                 <button
                                     onClick={() => setCurrentQuestionIndex(prev => Math.min(questions.length - 1, prev + 1))}
@@ -463,6 +571,30 @@ export default function ContestLivePage(props: { params: Promise<{ id: string }>
                 )}
             </AnimatePresence>
 
+            {/* Fullscreen Enforcer Overlay (Strict Mode) */}
+            {(contest?.strictMode && !isFullscreen) && (
+                <div className="fixed inset-0 z-50 bg-white/90 dark:bg-zinc-950/95 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center">
+                    <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 p-8 rounded-3xl shadow-2xl max-w-md w-full">
+                        <div className="w-16 h-16 bg-red-100 dark:bg-red-900/20 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                            <Lock size={32} />
+                        </div>
+                        <h2 className="text-2xl font-black text-gray-900 dark:text-gray-100 mb-3">
+                            Strict Mode Active
+                        </h2>
+                        <p className="text-gray-600 dark:text-gray-400 mb-8">
+                            This exam must be taken in <strong>Full Screen Mode</strong>.
+                            Exiting full screen may result in warnings or disqualification.
+                        </p>
+                        <button
+                            onClick={() => document.documentElement.requestFullscreen().catch(err => alert("Could not enable full screen: " + err.message))}
+                            className="w-full py-4 bg-gray-900 dark:bg-white text-white dark:text-black rounded-xl font-bold text-lg hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl"
+                        >
+                            Enter Full Screen
+                        </button>
+                    </div>
+                </div>
+            )}
+
             <ConfirmationModal
                 isOpen={modalConfig.isOpen}
                 onClose={() => modalConfig.type !== 'danger' && setModalConfig(prev => ({ ...prev, isOpen: false }))}
@@ -472,6 +604,7 @@ export default function ContestLivePage(props: { params: Promise<{ id: string }>
                 type={modalConfig.type}
                 confirmText={modalConfig.confirmText}
                 cancelText={modalConfig.cancelText}
+                autoClose={modalConfig.autoClose}
             />
         </div>
     );

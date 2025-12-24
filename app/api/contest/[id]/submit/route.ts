@@ -38,6 +38,42 @@ export async function POST(
         const contest = await Contest.findById(contestId);
         if (!contest) return NextResponse.json({ error: 'Contest not found' }, { status: 404 });
 
+        // STRICT MODE: Check Submission Window
+        console.log('--- STRICT CHECK DEBUG ---');
+        console.log('StrictMode:', contest.strictMode);
+
+        if (contest.strictMode) {
+            // Fix Loophole: existingResult must exist to calculate time
+            if (!existingResult || !existingResult.startTime) {
+                return NextResponse.json({
+                    success: false,
+                    error: 'Strict Mode Violation: Could not verify exam start time. Please refresh and try again.'
+                }, { status: 400 });
+            }
+
+            const submitWindow = contest.submitWindow || 10;
+            const now = new Date();
+            const startTime = new Date(existingResult.startTime);
+            const elapsedSeconds = (now.getTime() - startTime.getTime()) / 1000;
+            const durationSeconds = contest.duration * 60;
+            const remainingSeconds = durationSeconds - elapsedSeconds;
+
+            console.log('Elapsed:', elapsedSeconds);
+            console.log('Window (sec):', (submitWindow * 60) + 30);
+
+            // Allow submission only if remaining time is less than window (in seconds)
+            // Buffer of 30 seconds for clock drift
+            if (remainingSeconds > (submitWindow * 60) + 30) {
+                console.log('BLOCKED: Too early');
+                return NextResponse.json({
+                    success: false,
+                    error: `Strict Mode Violation: You can only submit in the last ${submitWindow} minutes.`
+                }, { status: 403 });
+            } else {
+                console.log('ALLOWED: Within submission window');
+            }
+        }
+
         // Fetch all questions for this contest
         const questions = await Question.find({ _id: { $in: contest.questions } });
 

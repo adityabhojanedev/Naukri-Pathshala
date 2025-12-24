@@ -1,10 +1,11 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Lock, Phone, AlertCircle } from 'lucide-react';
+import ThemeToggle from '@/components/ui/ThemeToggle';
 
 export default function AdminLogin() {
     const router = useRouter();
@@ -12,6 +13,13 @@ export default function AdminLogin() {
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        const adminUser = localStorage.getItem('adminUser');
+        if (adminUser) {
+            router.push('/admin/dashboard');
+        }
+    }, [router]);
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -28,11 +36,6 @@ export default function AdminLogin() {
             const data = await res.json();
 
             if (data.success) {
-                // Determine redirect or store token?
-                // For now, assuming session/cookie handled or just redirect
-                // Ideally we'd store role/user in context or localStorage if API doesn't set cookie
-                // Let's store in localStorage for specific "simple" check in dashboard if needed,
-                // but real security relies on API.
                 localStorage.setItem('adminUser', JSON.stringify(data.data));
                 router.push('/admin/dashboard');
             } else {
@@ -46,7 +49,11 @@ export default function AdminLogin() {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-zinc-900 transition-colors duration-300">
+        <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-zinc-900 transition-colors duration-300 relative">
+            <div className="absolute top-4 right-4">
+                <ThemeToggle />
+            </div>
+
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}

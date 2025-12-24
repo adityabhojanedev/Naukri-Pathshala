@@ -4,8 +4,9 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import ConfirmationModal from '@/components/ui/ConfirmationModal';
-import { Loader2, User, Trophy, AlertTriangle, Shield, Clock, Calendar, LogOut, Lock, RefreshCcw } from 'lucide-react';
+import { Loader2, User, Trophy, AlertTriangle, Shield, Clock, Calendar, LogOut, Lock, RefreshCcw, ArrowRight } from 'lucide-react';
 import ContestCalendar from '@/components/ContestCalendar';
+import CountdownTimer from '@/components/ui/CountdownTimer';
 
 export default function ProfilePage() {
     const router = useRouter();
@@ -222,14 +223,28 @@ export default function ProfilePage() {
 
                             {/* Stats Grid & Refresh - Mobile Optimized */}
                             <div className="flex flex-col items-center md:items-end gap-4 w-full md:w-auto mt-6 md:mt-0">
-                                <button
-                                    onClick={fetchProfile}
-                                    className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-zinc-800/50 hover:bg-white dark:hover:bg-zinc-800 hover:text-blue-600 dark:hover:text-blue-400 border border-gray-200 dark:border-zinc-700 rounded-lg transition-all active:scale-95"
-                                    title="Refresh Profile"
-                                >
-                                    <RefreshCcw size={14} className={loading && user ? "animate-spin" : ""} />
-                                    <span>Refresh Profile</span>
-                                </button>
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        onClick={() => {
+                                            localStorage.removeItem('token');
+                                            localStorage.removeItem('user');
+                                            window.location.href = '/login';
+                                        }}
+                                        className="flex items-center gap-2 px-3 py-1.5 text-xs font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/10 hover:bg-red-100 dark:hover:bg-red-900/20 border border-red-100 dark:border-red-900/20 rounded-lg transition-all active:scale-95"
+                                        title="Sign Out"
+                                    >
+                                        <LogOut size={14} />
+                                        <span>Logout</span>
+                                    </button>
+                                    <button
+                                        onClick={fetchProfile}
+                                        className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-zinc-800/50 hover:bg-white dark:hover:bg-zinc-800 hover:text-blue-600 dark:hover:text-blue-400 border border-gray-200 dark:border-zinc-700 rounded-lg transition-all active:scale-95"
+                                        title="Refresh Profile"
+                                    >
+                                        <RefreshCcw size={14} className={loading && user ? "animate-spin" : ""} />
+                                        <span>Refresh</span>
+                                    </button>
+                                </div>
 
                                 <div className="grid grid-cols-3 gap-3 w-full">
                                     <div className="bg-gray-50 dark:bg-zinc-800/50 p-3 md:p-4 rounded-xl text-center border border-gray-100 dark:border-zinc-700/50 min-w-[80px]">
@@ -330,7 +345,7 @@ export default function ProfilePage() {
                                     } else if (contest.status === 'Active') {
                                         status = 'Active';
                                         buttonText = 'Start Test';
-                                        buttonAction = () => router.push(`/contest/${contest._id}/live`);
+                                        buttonAction = () => router.push(`/contest/${contest._id}`); // Redirect to lobby first
                                         buttonStyle = 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-500/20 animate-pulse';
                                         statusColor = 'bg-blue-100 text-blue-700';
                                     } else if (now > end && contest.status !== 'Upcoming') {
@@ -342,95 +357,110 @@ export default function ProfilePage() {
                                     } else if (now >= start && now <= end) {
                                         status = 'Active';
                                         buttonText = 'Start Test';
-                                        buttonAction = () => router.push(`/contest/${contest._id}/live`);
+                                        buttonAction = () => router.push(`/contest/${contest._id}`); // Redirect to lobby first
                                         buttonStyle = 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-500/20 animate-pulse';
                                         statusColor = 'bg-blue-100 text-blue-700';
                                     }
 
                                     return (
-                                        <div key={contest._id} className={`group bg-white dark:bg-zinc-900 p-4 md:p-5 rounded-2xl border transition-all duration-300 ${isCompleted ? 'border-green-200 dark:border-green-900/30' : 'border-gray-200 dark:border-zinc-800 hover:border-blue-500/30 dark:hover:border-blue-500/30 shadow-sm hover:shadow-md'}`}>
-                                            <div className="flex flex-col md:flex-row gap-4 md:items-center justify-between">
-                                                <div className="space-y-2">
-                                                    <div className="space-y-3 w-full">
-                                                        <div className="flex items-start justify-between md:justify-start gap-3">
-                                                            <h3 className="font-bold text-gray-900 dark:text-gray-100 text-lg line-clamp-1 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                                                                {contest.title}
-                                                            </h3>
-                                                            {/* Mobile Status Badge */}
-                                                            <span className={`md:hidden px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide border ${statusColor}`}>
-                                                                {status}
-                                                            </span>
-                                                        </div>
+                                        <div key={contest._id} className="group relative bg-white dark:bg-zinc-900 rounded-2xl p-5 border border-gray-200 dark:border-zinc-800 shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden">
+                                            {/* Left Status Color Strip */}
+                                            <div className={`absolute top-0 bottom-0 left-0 w-1 ${status === 'Active' ? 'bg-blue-500' : isCompleted ? 'bg-green-500' : 'bg-gray-300 dark:bg-zinc-700'}`} />
 
-                                                        <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2 pr-4 hidden md:block">
-                                                            {contest.description}
-                                                        </p>
+                                            <div className="flex flex-col md:flex-row gap-5 items-start md:items-center pl-3">
+                                                {/* Date Box */}
+                                                <div className="bg-gray-50 dark:bg-zinc-800 rounded-xl p-2.5 min-w-[70px] text-center border border-gray-100 dark:border-zinc-700 flex flex-col items-center justify-center shrink-0 shadow-sm">
+                                                    <span className="text-[10px] text-red-500 font-bold uppercase tracking-wider">
+                                                        {new Date(contest.startTime).toLocaleString('default', { month: 'short' })}
+                                                    </span>
+                                                    <span className="text-2xl font-black text-gray-900 dark:text-white leading-none my-0.5">
+                                                        {new Date(contest.startTime).getDate()}
+                                                    </span>
+                                                    <span className="text-[10px] text-gray-400 font-medium">
+                                                        {new Date(contest.startTime).getFullYear()}
+                                                    </span>
+                                                </div>
 
-                                                        <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-gray-500 dark:text-gray-400">
-                                                            <span className="flex items-center gap-1.5">
-                                                                <Calendar size={14} className="text-gray-400" />
-                                                                {new Date(contest.startTime).toLocaleDateString()}
+                                                {/* Main Content */}
+                                                <div className="flex-1 space-y-2 w-full">
+                                                    <div className="flex items-center flex-wrap gap-2">
+                                                        {contest.category && (
+                                                            <span className="px-2 py-0.5 rounded-md bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-gray-300 text-[10px] font-bold uppercase tracking-wide border border-gray-200 dark:border-zinc-700">
+                                                                {contest.category}
                                                             </span>
-                                                            <span className="flex items-center gap-1.5">
-                                                                <Clock size={14} className="text-gray-400" />
-                                                                {contest.duration} min
+                                                        )}
+                                                        {contest.difficulty && (
+                                                            <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wide border ${contest.difficulty === 'Easy' ? 'bg-green-50 text-green-600 border-green-100 dark:bg-green-900/10 dark:border-green-900/20' :
+                                                                contest.difficulty === 'Medium' ? 'bg-yellow-50 text-yellow-600 border-yellow-100 dark:bg-yellow-900/10 dark:border-yellow-900/20' :
+                                                                    'bg-red-50 text-red-600 border-red-100 dark:bg-red-900/10 dark:border-red-900/20'
+                                                                }`}>
+                                                                {contest.difficulty}
                                                             </span>
-                                                            {contest.difficulty && (
-                                                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide border ${contest.difficulty === 'Easy' ? 'bg-green-50 text-green-600 border-green-100 dark:bg-green-900/20 dark:border-green-800' :
-                                                                        contest.difficulty === 'Medium' ? 'bg-yellow-50 text-yellow-600 border-yellow-100 dark:bg-yellow-900/20 dark:border-yellow-800' :
-                                                                            'bg-red-50 text-red-600 border-red-100 dark:bg-red-900/20 dark:border-red-800'
-                                                                    }`}>
-                                                                    {contest.difficulty}
-                                                                </span>
-                                                            )}
-                                                            {contest.category && (
-                                                                <span className="flex items-center gap-1.5 px-2 py-0.5 bg-gray-100 dark:bg-zinc-800 rounded text-[10px] font-bold uppercase tracking-wide border border-gray-200 dark:border-zinc-700">
-                                                                    {contest.category}
-                                                                </span>
-                                                            )}
-                                                            {contest.slots && (
-                                                                <span className="flex items-center gap-1.5 text-xs">
-                                                                    {contest.slots} Slots
-                                                                </span>
-                                                            )}
+                                                        )}
+                                                    </div>
 
-                                                            {!isCompleted && now < start && (
-                                                                <span className="flex items-center gap-1.5 text-orange-500 font-medium ml-auto md:ml-0">
-                                                                    <Clock size={14} />
-                                                                    Starts in {Math.ceil((start - now) / (1000 * 60 * 60))}h
-                                                                </span>
-                                                            )}
-                                                        </div>
+                                                    <h3 className="text-xl font-bold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors line-clamp-1">
+                                                        {contest.title}
+                                                    </h3>
+
+                                                    <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-gray-500 dark:text-gray-400">
+                                                        <span className="flex items-center gap-1.5 bg-gray-50 dark:bg-zinc-800/50 px-2 py-1 rounded-lg border border-gray-100 dark:border-zinc-800">
+                                                            <Clock size={14} className="text-blue-500" />
+                                                            <span className="font-medium text-gray-700 dark:text-gray-300 text-xs">
+                                                                {new Date(contest.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {new Date(contest.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                            </span>
+                                                        </span>
+                                                        <span className="flex items-center gap-1.5">
+                                                            <RefreshCcw size={14} className="text-purple-500" />
+                                                            <span className="text-xs font-medium">{contest.duration} mins</span>
+                                                        </span>
+                                                        <span className="flex items-center gap-1.5">
+                                                            <User size={14} className="text-orange-500" />
+                                                            <span className="text-xs font-medium">{contest.slots} Slots</span>
+                                                        </span>
+                                                        {!isCompleted && now < start && (
+                                                            <span className="flex items-center gap-1.5 text-orange-500 font-medium ml-auto md:ml-0 bg-orange-50 dark:bg-orange-900/10 px-2 py-0.5 rounded border border-orange-100 dark:border-orange-900/20">
+                                                                <Clock size={12} />
+                                                                <span className="text-[10px] font-bold">Starts in: <CountdownTimer targetDate={contest.startTime} onComplete={() => window.location.reload()} /></span>
+                                                            </span>
+                                                        )}
                                                     </div>
                                                 </div>
 
-                                                <div className="flex items-center justify-between md:justify-end gap-3 pt-4 md:pt-0 border-t md:border-t-0 border-gray-100 dark:border-zinc-800 mt-2 md:mt-0">
-                                                    <span className={`hidden md:inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold capitalize ${statusColor}`}>
+                                                {/* Action Section */}
+                                                <div className="flex flex-row md:flex-col items-center md:items-end justify-between md:justify-center gap-3 w-full md:w-auto border-t md:border-t-0 border-gray-100 dark:border-zinc-800 pt-3 md:pt-0 mt-2 md:mt-0">
+                                                    {/* Status Badge */}
+                                                    <div className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-sm ${status === 'Active' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300' :
+                                                        status === 'Completed' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' :
+                                                            'bg-gray-100 text-gray-600 dark:bg-zinc-800 dark:text-gray-400'
+                                                        }`}>
+                                                        <span className={`relative flex h-2 w-2 rounded-full ${status === 'Active' ? 'bg-blue-500' : status === 'Completed' ? 'bg-green-500' : 'bg-gray-400'}`}>
+                                                            {status === 'Active' && <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 bg-blue-500"></span>}
+                                                        </span>
                                                         {status}
-                                                    </span>
+                                                    </div>
 
-                                                    <div className="flex gap-2">
-                                                        {/* Leave Button - Only if Pending */}
+                                                    <div className="flex items-center gap-2">
+                                                        {/* Leave Button */}
                                                         {status === 'Pending' && (
                                                             <button
                                                                 onClick={() => handleLeaveClick(contest._id, contest.title, contest.startTime)}
-                                                                className={`p-2.5 rounded-xl border transition-colors flex items-center justify-center
-                                                                ${isLeaveable
-                                                                        ? 'border-red-200 text-red-600 hover:bg-red-50 dark:border-red-900/30 dark:text-red-400 dark:hover:bg-red-900/10'
-                                                                        : 'border-gray-200 text-gray-400 cursor-not-allowed dark:border-zinc-700 dark:text-zinc-600'
+                                                                className={`p-2 rounded-lg border transition-all ${isLeaveable
+                                                                    ? 'border-red-200 text-red-500 hover:bg-red-50 hover:border-red-300 dark:border-red-900/30 dark:text-red-400 dark:hover:bg-red-900/10'
+                                                                    : 'border-gray-200 text-gray-300 cursor-not-allowed dark:border-zinc-800 dark:text-zinc-700'
                                                                     }`}
                                                                 title={isLeaveable ? "Leave Contest" : "Cannot leave within 24h of start"}
                                                             >
-                                                                {isLeaveable ? <LogOut size={18} /> : <Lock size={18} />}
+                                                                {isLeaveable ? <LogOut size={16} /> : <Lock size={16} />}
                                                             </button>
                                                         )}
 
                                                         <button
                                                             onClick={buttonAction}
-                                                            className={`px-5 py-2.5 text-sm font-semibold rounded-xl transition-colors active:scale-95 shadow-lg ${buttonStyle}`}
+                                                            className={`px-4 py-2 text-xs font-bold uppercase tracking-wide rounded-lg transition-all active:scale-95 shadow-md flex items-center gap-2 ${buttonStyle}`}
                                                             disabled={status === 'Pending' || status === 'Expired'}
                                                         >
-                                                            {buttonText}
+                                                            {buttonText} {status === 'Active' && <ArrowRight size={14} />}
                                                         </button>
                                                     </div>
                                                 </div>

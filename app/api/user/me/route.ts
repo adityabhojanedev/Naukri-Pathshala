@@ -28,7 +28,7 @@ export async function GET(request: Request) {
             .select('-password')
             .populate({
                 path: 'joinedContests',
-                select: 'title startTime duration difficulty category status slots description supportedLanguages',
+                select: 'title startTime endTime duration difficulty category status slots description supportedLanguages',
                 options: { sort: { startTime: -1 } }
             });
 

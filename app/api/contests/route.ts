@@ -61,7 +61,7 @@ export async function GET(req: Request) {
         const contests = await Contest.find({
             status: { $in: ['Active', 'Upcoming'] }
         })
-            .select('title startTime endTime duration difficulty category status slots description supportedLanguages')
+            .select('title startTime endTime duration difficulty category status slots description supportedLanguages strictMode')
             .sort({ startTime: -1 })
             .lean();
 

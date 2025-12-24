@@ -35,7 +35,7 @@ export default function AdminLeaderboardPage({ params }: { params: Promise<{ id:
     const [modalConfig, setModalConfig] = useState<{
         isOpen: boolean;
         title: string;
-        message: string;
+        message: string | React.ReactNode;
         type: 'danger' | 'warning' | 'success' | 'info';
         onConfirm: () => void;
     }>({
@@ -105,7 +105,7 @@ export default function AdminLeaderboardPage({ params }: { params: Promise<{ id:
             type: 'danger',
             onConfirm: async () => {
                 try {
-                    const res = await fetch(`/api/admin/results/${resultId}`, { method: 'DELETE' });
+                    const res = await fetch(`/api/admin/results/${resultId}?contestId=${contestId}`, { method: 'DELETE' });
                     const data = await res.json();
                     if (data.success) {
                         setLeaderboard(prev => prev.filter(item => item._id !== resultId));
@@ -123,6 +123,24 @@ export default function AdminLeaderboardPage({ params }: { params: Promise<{ id:
                     console.error(e);
                 }
             }
+        });
+    };
+
+    const handleViewWarnings = (user: { firstName: string, lastName: string }, warnings: string[]) => {
+        setModalConfig({
+            isOpen: true,
+            title: `Warnings for ${user.firstName}`,
+            message: (
+                <div className="text-left w-full bg-orange-50 dark:bg-orange-900/10 p-4 rounded-xl border border-orange-100 dark:border-orange-900/20 max-h-60 overflow-y-auto">
+                    <ul className="list-disc list-inside space-y-2 text-sm text-gray-700 dark:text-gray-300">
+                        {warnings.map((w, i) => (
+                            <li key={i} className="leading-snug">{w}</li>
+                        ))}
+                    </ul>
+                </div>
+            ),
+            type: 'warning',
+            onConfirm: () => setModalConfig(prev => ({ ...prev, isOpen: false }))
         });
     };
 
@@ -224,17 +242,13 @@ export default function AdminLeaderboardPage({ params }: { params: Promise<{ id:
                                             )}
                                             {/* @ts-ignore */}
                                             {entry.warningLabels && entry.warningLabels.length > 0 && (
-                                                <div className="group relative ml-2 inline-block">
-                                                    <span className="inline-flex items-center gap-1 text-xs text-orange-500 bg-orange-50 dark:bg-orange-900/10 px-2 py-0.5 rounded-full border border-orange-100 dark:border-orange-900/20 cursor-help">
-                                                        <AlertTriangle size={12} /> {entry.warningLabels.length} Warnings
-                                                    </span>
-                                                    <div className="absolute left-0 bottom-full mb-2 w-48 bg-white dark:bg-zinc-800 text-xs shadow-lg rounded-lg border border-gray-200 dark:border-zinc-700 p-2 hidden group-hover:block z-10">
-                                                        <p className="font-bold mb-1 border-b border-gray-100 dark:border-zinc-700 pb-1">Warning Log:</p>
-                                                        <ul className="list-disc list-inside space-y-0.5 text-gray-600 dark:text-gray-300">
-                                                            {entry.warningLabels.map((w, i) => <li key={i}>{w}</li>)}
-                                                        </ul>
-                                                    </div>
-                                                </div>
+                                                <button
+                                                    onClick={() => handleViewWarnings(entry.userId, entry.warningLabels!)}
+                                                    className="ml-2 inline-flex items-center gap-1 text-xs text-orange-600 bg-orange-50 dark:bg-orange-900/20 px-2 py-0.5 rounded-full border border-orange-200 dark:border-orange-800 hover:bg-orange-100 dark:hover:bg-orange-900/40 transition-colors"
+                                                    title="View Warning Log"
+                                                >
+                                                    <AlertTriangle size={12} /> {entry.warningLabels.length} Warnings
+                                                </button>
                                             )}
                                         </td>
 

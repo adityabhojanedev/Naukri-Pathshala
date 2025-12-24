@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
+import logo from "@/app/assets/logo.png";
 import { useLanguage } from "./LanguageContext";
 import { useTheme } from "next-themes";
 import { Button, buttonVariants } from "@/components/ui/Button";
@@ -56,11 +58,14 @@ export default function Navbar() {
             <div className="container mx-auto px-4 md:px-8 flex items-center justify-between">
                 {/* Logo */}
                 <Link href="/" className="flex items-center gap-3 group relative z-50">
-                    <div className="relative">
-                        <div className="absolute inset-0 bg-primary/30 blur-lg rounded-full group-hover:bg-primary/50 transition-all" />
-                        <div className="relative bg-gradient-to-br from-primary to-indigo-600 p-2 rounded-xl text-white shadow-lg group-hover:scale-105 transition-transform duration-300">
-                            <Trophy size={20} strokeWidth={2.5} />
-                        </div>
+                    <div className="relative h-10 w-10 transition-transform duration-300 hover:scale-105">
+                        <Image
+                            src={logo}
+                            alt="Naukri Pathshala"
+                            fill
+                            className="object-contain bg-white p-1.5 rounded-xl shadow-sm border border-gray-100/50"
+                            priority
+                        />
                     </div>
                     <span className="font-bold text-xl tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/70 group-hover:to-primary transition-all duration-300">
                         Naukri Pathshala
@@ -145,13 +150,49 @@ export default function Navbar() {
                     </button>
 
                     {user ? (
-                        <div className="flex items-center gap-2 pl-2">
-                            <Link href="/profile" className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/20 hover:scale-105 transition-all group">
-                                <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center text-xs font-bold">
+                        <div className="relative pl-2 group">
+                            <button
+                                onClick={() => setIsLangOpen(false)} // Close lang if open
+                                className="flex items-center gap-2 px-1 py-1 rounded-full hover:bg-white/10 transition-all border border-transparent hover:border-white/10"
+                            >
+                                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-sm font-bold text-white shadow-lg ring-2 ring-white/20">
                                     {user.firstName ? user.firstName[0] : 'U'}
                                 </div>
-                                <span className="text-sm font-semibold pr-1">My Profile</span>
-                            </Link>
+                            </button>
+
+                            {/* Dropdown Menu */}
+                            <div className="absolute right-0 top-full mt-2 w-64 opacity-0 scale-95 translate-y-2 invisible group-hover:visible group-hover:opacity-100 group-hover:scale-100 group-hover:translate-y-0 transition-all duration-200 ease-out origin-top-right">
+                                <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-200 dark:border-zinc-800 shadow-xl overflow-hidden p-2">
+                                    <div className="px-4 py-3 border-b border-gray-100 dark:border-zinc-800 mb-2">
+                                        <p className="text-sm font-bold text-gray-900 dark:text-white truncate">
+                                            {user.firstName} {user.lastName}
+                                        </p>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                                            {user.email}
+                                        </p>
+                                    </div>
+
+                                    <Link
+                                        href="/profile"
+                                        className="flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-zinc-800 rounded-xl transition-colors"
+                                    >
+                                        <div className="p-1.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 rounded-lg">
+                                            <Trophy size={16} />
+                                        </div>
+                                        My Profile
+                                    </Link>
+
+                                    <button
+                                        onClick={handleLogout}
+                                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-xl transition-colors mt-1"
+                                    >
+                                        <div className="p-1.5 bg-red-50 dark:bg-red-900/20 text-red-600 rounded-lg shrink-0">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                                        </div>
+                                        Sign Out
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     ) : (
                         <Link

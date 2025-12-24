@@ -14,6 +14,8 @@ export default function ResultPage(props: { params: Promise<{ id: string }> }) {
     const [loading, setLoading] = useState(true);
     const [contestEnded, setContestEnded] = useState(false); // To verify if answer key should be shown
 
+    const [contest, setContest] = useState<any>(null);
+
     const formatTime = (seconds: number) => {
         if (!seconds) return '-';
         const m = Math.floor(seconds / 60);
@@ -30,26 +32,24 @@ export default function ResultPage(props: { params: Promise<{ id: string }> }) {
             }
 
             try {
-                // Fetch User Result (We might need an API for 'my-result-for-contest')
-                // For now, assume we passed resultId via query param or fetch 'latest'
-                // Or better, fetch Leaderboard which includes me?
-                // Let's create a specialized 'result-summary' fetch
-                // Actually, the previous 'submit' returned the resultId. Let's assume the user was redirected here.
-                // We can fetch `/api/contest/${params.id}/result/me` (Needs implementation or logic)
-                // Simpler: Fetch Leaderboard and find me, OR just show generic 'You submitted'.
-                // Let's implement a quick 'get my result' in the same useEffect if we had an endpoint.
+                // Fetch Contest Details for Marking Scheme
+                const contestRes = await fetch(`/api/admin/contests/${params.id}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (contestRes.ok) {
+                    const cData = await contestRes.json();
+                    if (cData.success) setContest(cData.data);
+                }
 
-                // Fetching Leaderboard (mock or real)
-                // We need `api/contest/[id]/ranking`
+                // Fetch Leaderboard and Result
                 const leaderRes = await fetch(`/api/contest/${params.id}/ranking`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
 
-
                 if (leaderRes.ok) {
                     const data = await leaderRes.json();
                     setLeaderboard(data.leaderboard || []);
-                    setResult(data.myResult); // Expected API to return my result too
+                    setResult(data.myResult);
                     setContestEnded(data.contestEnded);
                 }
 
@@ -116,6 +116,44 @@ export default function ResultPage(props: { params: Promise<{ id: string }> }) {
                         </p>
                     )}
                 </div>
+
+                {/* Score Calculation Breakdown */}
+                {contest && result && (
+                    <div className="bg-white dark:bg-zinc-900 rounded-3xl p-6 md:p-8 mb-8 shadow-sm border border-gray-200 dark:border-zinc-800">
+                        <h3 className="font-bold text-lg mb-4 text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                            <BarChart2 className="text-blue-500" size={20} /> Score Breakdown
+                        </h3>
+                        <div className="bg-gray-50 dark:bg-zinc-800/50 rounded-xl p-4 space-y-3 font-mono text-sm">
+                            <div className="flex justify-between items-center text-green-600 dark:text-green-400">
+                                <span className="flex items-center gap-2">
+                                    <CheckCircle size={16} /> Correct Answers ({result.stats?.correct || 0})
+                                </span>
+                                <span>
+                                    {result.stats?.correct || 0} × {contest.marksPerQuestion} = <span className="font-bold">+{(result.stats?.correct || 0) * contest.marksPerQuestion}</span>
+                                </span>
+                            </div>
+                            <div className="flex justify-between items-center text-red-600 dark:text-red-400">
+                                <span className="flex items-center gap-2">
+                                    <XCircle size={16} /> Wrong Answers ({result.stats?.wrong || 0})
+                                </span>
+                                <span>
+                                    {result.stats?.wrong || 0} × {contest.negativeMarking} = <span className="font-bold">-{(result.stats?.wrong || 0) * contest.negativeMarking}</span>
+                                </span>
+                            </div>
+                            <div className="flex justify-between items-center text-gray-500 dark:text-gray-400">
+                                <span className="flex items-center gap-2">
+                                    <AlertTriangle size={16} /> Skipped ({result.stats?.skipped || 0})
+                                </span>
+                                <span>0</span>
+                            </div>
+                            <div className="h-px bg-gray-200 dark:bg-zinc-700 my-2" />
+                            <div className="flex justify-between items-center text-base md:text-lg font-bold text-gray-900 dark:text-white">
+                                <span>Final Score</span>
+                                <span>{result.score}</span>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 {/* Leaderboard */}
                 <div className="bg-white dark:bg-zinc-900 rounded-3xl p-6 md:p-8 shadow-lg border border-gray-200 dark:border-zinc-800">
