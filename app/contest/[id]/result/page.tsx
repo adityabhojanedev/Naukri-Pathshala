@@ -23,45 +23,53 @@ export default function ResultPage(props: { params: Promise<{ id: string }> }) {
         return `${m}m ${s}s`;
     };
 
+    const [refreshing, setRefreshing] = useState(false);
+
+    const fetchData = async (isRefresh = false) => {
+        if (isRefresh) setRefreshing(true);
+        const token = localStorage.getItem('token');
+        if (!token) {
+            router.push('/login');
+            return;
+        }
+
+        try {
+            // Fetch Contest Details for Marking Scheme
+            const contestRes = await fetch(`/api/admin/contests/${params.id}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (contestRes.ok) {
+                const cData = await contestRes.json();
+                if (cData.success) setContest(cData.data);
+            }
+
+            // Fetch Leaderboard and Result
+            const leaderRes = await fetch(`/api/contest/${params.id}/ranking`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+
+            if (leaderRes.ok) {
+                const data = await leaderRes.json();
+                setLeaderboard(data.leaderboard || []);
+                setResult(data.myResult);
+                setContestEnded(data.contestEnded);
+            }
+
+        } catch (error) {
+            console.error("Failed to load results", error);
+        } finally {
+            setLoading(false);
+            if (isRefresh) setRefreshing(false);
+        }
+    };
+
     useEffect(() => {
-        const fetchData = async () => {
-            const token = localStorage.getItem('token');
-            if (!token) {
-                router.push('/login');
-                return;
-            }
-
-            try {
-                // Fetch Contest Details for Marking Scheme
-                const contestRes = await fetch(`/api/admin/contests/${params.id}`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                if (contestRes.ok) {
-                    const cData = await contestRes.json();
-                    if (cData.success) setContest(cData.data);
-                }
-
-                // Fetch Leaderboard and Result
-                const leaderRes = await fetch(`/api/contest/${params.id}/ranking`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-
-                if (leaderRes.ok) {
-                    const data = await leaderRes.json();
-                    setLeaderboard(data.leaderboard || []);
-                    setResult(data.myResult);
-                    setContestEnded(data.contestEnded);
-                }
-
-            } catch (error) {
-                console.error("Failed to load results", error);
-            } finally {
-                setLoading(false);
-            }
-        };
-
         fetchData();
     }, [params.id]);
+
+    const handleRefresh = () => {
+        fetchData(true);
+    };
 
     if (loading) return <div className="min-h-screen bg-gray-50 flex items-center justify-center">Loading Results...</div>;
 
@@ -110,11 +118,27 @@ export default function ResultPage(props: { params: Promise<{ id: string }> }) {
                             {contestEnded ? 'View Answer Key' : 'Answer Key Locked'}
                         </button>
                         <button
-                            onClick={() => window.location.reload()} // Simple reload to refetch everything
-                            className="bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-gray-300 p-3 rounded-xl hover:bg-gray-200 dark:hover:bg-zinc-700 transition"
+                            onClick={handleRefresh}
+                            disabled={refreshing}
+                            className={`flex items-center gap-2 bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-gray-300 px-4 py-3 rounded-xl hover:bg-gray-200 dark:hover:bg-zinc-700 transition ${refreshing ? 'opacity-75 cursor-not-allowed' : ''}`}
                             title="Refresh Results"
                         >
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-rotate-cw"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" /><path d="M21 3v5h-5" /></svg>
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="20"
+                                height="20"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                className={`lucide lucide-rotate-cw ${refreshing ? 'animate-spin' : ''}`}
+                            >
+                                <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" />
+                                <path d="M21 3v5h-5" />
+                            </svg>
+                            {refreshing ? 'Checking...' : 'Refresh'}
                         </button>
                     </div>
                     {!contestEnded && (

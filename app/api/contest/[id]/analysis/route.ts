@@ -24,9 +24,10 @@ export async function GET(
         const contest = await Contest.findById(contestId);
         if (!contest) return NextResponse.json({ error: "Contest not found" }, { status: 404 });
 
-        // TIME CHECK: Only allow if contest ended
+        // TIME CHECK: Only allow if contest ended or status is completed
         const now = new Date();
-        if (new Date(contest.endTime) > now) {
+        // Check if date is passed OR status is completed
+        if (new Date(contest.endTime) > now && contest.status !== 'completed') {
             return NextResponse.json({ error: "Analysis Locked" }, { status: 403 });
         }
 
