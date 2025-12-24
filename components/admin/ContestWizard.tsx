@@ -174,10 +174,16 @@ export default function ContestWizard({ existingContestId }: { existingContestId
             const url = contestId ? `/api/admin/contests/${contestId}` : '/api/admin/contests';
             const method = contestId ? 'PUT' : 'POST';
 
+            const payload = {
+                ...formData,
+                startTime: new Date(formData.startTime).toISOString(),
+                endTime: new Date(formData.endTime).toISOString()
+            };
+
             const res = await fetch(url, {
                 method,
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(formData),
+                body: JSON.stringify(payload),
             });
             const data = await res.json();
 

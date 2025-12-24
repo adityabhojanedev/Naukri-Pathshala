@@ -11,6 +11,7 @@ interface Contest {
     description: string;
     supportedLanguages: string[];
     startTime: string;
+    endTime: string;
     duration: number;
     difficulty: string;
     category: string;

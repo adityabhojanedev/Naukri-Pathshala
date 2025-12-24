@@ -12,6 +12,7 @@ interface Contest {
     description: string;
     supportedLanguages: string[];
     startTime: string;
+    endTime: string; // Added for dynamic status
     duration: number;
     difficulty: string;
     category: string;
@@ -115,7 +116,19 @@ export default function ContestCard({ contest }: { contest: Contest }) {
         });
     };
 
-    const isLive = new Date(contest.startTime) <= new Date() && contest.status === 'Active';
+    // Removed old isLive calculation
+
+
+    const now = new Date();
+    const start = new Date(contest.startTime);
+    const end = new Date(contest.endTime);
+
+    const isLive = start <= now && end > now;
+    const isCompleted = end <= now;
+    const isUpcoming = start > now;
+
+    // Derived status for display
+    const displayStatus = isLive ? 'Live' : (isCompleted ? 'Completed' : 'Upcoming');
 
     return (
         <>
@@ -127,7 +140,12 @@ export default function ContestCard({ contest }: { contest: Contest }) {
                 className="group relative bg-white dark:bg-zinc-900 rounded-2xl border border-gray-200 dark:border-zinc-800 overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300"
             >
                 {/* Gradient Line */}
-                <div className={`h-1.5 w-full bg-gradient-to-r ${isLive ? 'from-red-500 to-orange-500' : 'from-blue-500 to-indigo-500'}`} />
+                <div className={`h-1.5 w-full bg-gradient-to-r ${isLive
+                    ? 'from-red-500 to-orange-500'
+                    : isCompleted
+                        ? 'from-gray-400 to-gray-500'
+                        : 'from-blue-500 to-indigo-500'
+                    }`} />
 
                 <div className="p-6">
                     {/* Header */}
@@ -135,9 +153,13 @@ export default function ContestCard({ contest }: { contest: Contest }) {
                         <div className="space-y-1">
                             <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold tracking-wide uppercase ${isLive
                                 ? 'bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400 border border-red-100 dark:border-red-800 animate-pulse'
-                                : 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400 border border-blue-100 dark:border-blue-800'
+                                : isCompleted
+                                    ? 'bg-gray-100 text-gray-600 dark:bg-zinc-800 dark:text-gray-400 border border-gray-200 dark:border-zinc-700'
+                                    : 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400 border border-blue-100 dark:border-blue-800'
                                 }`}>
-                                {isLive ? <><Zap size={12} fill="currentColor" /> Live Now</> : 'Upcoming'}
+                                {isLive && <><Zap size={12} fill="currentColor" /> Live Now</>}
+                                {isCompleted && 'Completed'}
+                                {isUpcoming && 'Upcoming'}
                             </span>
                             <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors line-clamp-1">
                                 {contest.title}
@@ -200,7 +222,7 @@ export default function ContestCard({ contest }: { contest: Contest }) {
                                 <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" /> Joined
                             </>
                         ) : (
-                            joining ? 'Joining...' : (isLive ? 'Join Contest' : 'Register Now')
+                            isCompleted ? 'View Results' : (joining ? 'Joining...' : (isLive ? 'Join Contest' : 'Register Now'))
                         )}
                         {!contest.hasJoined && !joining && <ArrowRight size={18} />}
                     </button>
