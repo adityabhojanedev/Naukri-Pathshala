@@ -64,6 +64,34 @@ export default function AnswerKeyPage(props: { params: Promise<{ id: string }> }
     // 1. Extract Unique Subjects
     const subjects = Array.from(new Set(data?.questions?.map((q: any) => q.subject || 'General'))).sort() as string[];
 
+    // Extract available languages dynamically
+    const availableLanguages = Array.from(new Set(
+        data?.questions?.flatMap((q: any) => Object.keys(q.text || {})) || []
+    )).filter(l => l) as string[];
+
+    // Default to 'en' if available, otherwise first available, or just 'en'
+    const [language, setLanguage] = useState<string>('en');
+
+    useEffect(() => {
+        if (availableLanguages.length > 0 && !availableLanguages.includes(language)) {
+            setLanguage(availableLanguages.includes('en') ? 'en' : availableLanguages[0]);
+        }
+    }, [availableLanguages.join(',')]); // Update if available languages change
+
+    const languageNames: { [key: string]: string } = {
+        en: 'English',
+        hi: 'Hindi',
+        mr: 'Marathi',
+        gu: 'Gujarati',
+        ta: 'Tamil',
+        bn: 'Bengali'
+    };
+
+    const getLocalizedText = (obj: any, lang: string) => {
+        if (!obj) return '';
+        return obj[lang] || obj['en'] || Object.values(obj)[0] || '';
+    };
+
     // 2. Filter Questions
     const filteredQuestions = data?.questions?.filter((q: any) => {
         const userAns = data.userAnswers[q._id];
@@ -139,34 +167,51 @@ export default function AnswerKeyPage(props: { params: Promise<{ id: string }> }
 
                 {/* --- Filters --- */}
                 <div className="bg-white dark:bg-zinc-900 rounded-2xl p-4 shadow-sm border border-gray-200 dark:border-zinc-800 mb-6 sticky top-20 z-10">
-                    <div className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center">
-                        {/* Status Filter */}
-                        <div className="flex gap-2 overflow-x-auto w-full md:w-auto pb-2 md:pb-0 no-scrollbar">
-                            {['All', 'Correct', 'Wrong', 'Skipped'].map((status) => (
-                                <button
-                                    key={status}
-                                    onClick={() => setStatusFilter(status as any)}
-                                    className={`px-3 py-1.5 rounded-full text-[10px] md:text-sm font-bold whitespace-nowrap transition-colors border
+                    <div className="flex flex-col gap-4">
+                        <div className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center">
+                            {/* Status Filter */}
+                            <div className="flex gap-2 overflow-x-auto w-full md:w-auto pb-2 md:pb-0 no-scrollbar">
+                                {['All', 'Correct', 'Wrong', 'Skipped'].map((status) => (
+                                    <button
+                                        key={status}
+                                        onClick={() => setStatusFilter(status as any)}
+                                        className={`px-3 py-1.5 rounded-full text-[10px] md:text-sm font-bold whitespace-nowrap transition-colors border
                                     ${statusFilter === status
-                                            ? 'bg-blue-600 text-white border-blue-600'
-                                            : 'bg-gray-50 dark:bg-zinc-800 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-zinc-700 hover:bg-gray-100 dark:hover:bg-zinc-700'
-                                        }`}
-                                >
-                                    {status}
-                                </button>
-                            ))}
-                        </div>
+                                                ? 'bg-blue-600 text-white border-blue-600'
+                                                : 'bg-gray-50 dark:bg-zinc-800 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-zinc-700 hover:bg-gray-100 dark:hover:bg-zinc-700'
+                                            }`}
+                                    >
+                                        {status}
+                                    </button>
+                                ))}
+                            </div>
 
-                        {/* Subject Filter */}
-                        <div className="w-full md:w-auto">
-                            <select
-                                value={subjectFilter}
-                                onChange={(e) => setSubjectFilter(e.target.value)}
-                                className="w-full md:w-48 px-3 py-2 rounded-xl text-[10px] md:text-sm bg-gray-50 dark:bg-zinc-800 border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            >
-                                <option value="All">All Subjects</option>
-                                {subjects.map(s => <option key={s} value={s}>{s}</option>)}
-                            </select>
+                            <div className="flex gap-3 w-full md:w-auto">
+                                {/* Subject Filter */}
+                                <select
+                                    value={subjectFilter}
+                                    onChange={(e) => setSubjectFilter(e.target.value)}
+                                    className="flex-1 md:w-40 px-3 py-2 rounded-xl text-[10px] md:text-sm bg-gray-50 dark:bg-zinc-800 border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                >
+                                    <option value="All">All Subjects</option>
+                                    {subjects.map(s => <option key={s} value={s}>{s}</option>)}
+                                </select>
+
+                                {/* Language Filter */}
+                                {availableLanguages.length > 1 && (
+                                    <select
+                                        value={language}
+                                        onChange={(e) => setLanguage(e.target.value)}
+                                        className="flex-1 md:w-32 px-3 py-2 rounded-xl text-[10px] md:text-sm bg-gray-50 dark:bg-zinc-800 border-gray-200 dark:border-zinc-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    >
+                                        {availableLanguages.map(lang => (
+                                            <option key={lang} value={lang}>
+                                                {languageNames[lang] || lang.toUpperCase()}
+                                            </option>
+                                        ))}
+                                    </select>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -197,9 +242,8 @@ export default function AnswerKeyPage(props: { params: Promise<{ id: string }> }
                                             </span>
 
                                             <h3 className="font-medium text-xs md:text-lg text-gray-900 dark:text-gray-100 mb-3 md:mb-4 leading-relaxed">
-                                                {q.text.en}
+                                                {getLocalizedText(q.text, language)}
                                             </h3>
-                                            {q.text.hi && <p className="text-gray-600 dark:text-gray-400 text-[10px] md:text-sm mb-3 md:mb-4">{q.text.hi}</p>}
 
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3 mb-4 md:mb-6">
                                                 {q.options.map((opt: any, optIdx: number) => {
@@ -212,7 +256,7 @@ export default function AnswerKeyPage(props: { params: Promise<{ id: string }> }
 
                                                     return (
                                                         <div key={optIdx} className={`p-2 md:p-3 rounded-lg border flex justify-between items-start md:items-center text-[10px] md:text-sm ${style}`}>
-                                                            <span className="leading-tight">{opt.en}</span>
+                                                            <span className="leading-tight">{getLocalizedText(opt, language)}</span>
                                                             <div className="ml-2 flex-shrink-0">
                                                                 {isCorrectOpt && <CheckCircle size={14} className="text-green-600 md:w-4 md:h-4" />}
                                                                 {isSelected && !isCorrectOpt && <XCircle size={14} className="text-red-600 md:w-4 md:h-4" />}
@@ -224,7 +268,7 @@ export default function AnswerKeyPage(props: { params: Promise<{ id: string }> }
 
                                             <div className="bg-blue-50 dark:bg-blue-900/10 p-3 md:p-4 rounded-xl text-[10px] md:text-sm text-blue-900 dark:text-blue-300">
                                                 <span className="font-bold block mb-1">Explanation:</span>
-                                                {q.explanation?.en || "No explanation provided."}
+                                                {getLocalizedText(q.explanation, language) || "No explanation provided."}
                                             </div>
                                         </div>
                                     </div>
