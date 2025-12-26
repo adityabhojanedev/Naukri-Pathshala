@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Loader2, ChevronLeft, ChevronRight, Menu, X, Timer, Lock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ConfirmationModal from '@/components/ui/ConfirmationModal';
+import { isMobile } from 'react-device-detect';
 
 export default function ContestLivePage(props: { params: Promise<{ id: string }> }) {
     const params = use(props.params);
@@ -570,8 +571,8 @@ export default function ContestLivePage(props: { params: Promise<{ id: string }>
                 )}
             </AnimatePresence>
 
-            {/* Fullscreen Enforcer Overlay (Strict Mode) */}
-            {(contest?.strictMode && !isFullscreen) && (
+            {/* Fullscreen Enforcer Overlay (Strict Mode - Desktop Only) */}
+            {(contest?.strictMode && !isFullscreen && !isMobile) && (
                 <div className="fixed inset-0 z-50 bg-white/90 dark:bg-zinc-950/95 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center">
                     <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 p-8 rounded-3xl shadow-2xl max-w-md w-full">
                         <div className="w-16 h-16 bg-red-100 dark:bg-red-900/20 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6">
