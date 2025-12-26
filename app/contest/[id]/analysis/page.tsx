@@ -16,6 +16,25 @@ export default function AnswerKeyPage(props: { params: Promise<{ id: string }> }
     const [statusFilter, setStatusFilter] = useState<'All' | 'Correct' | 'Wrong' | 'Skipped'>('All');
     const [subjectFilter, setSubjectFilter] = useState<string>('All');
 
+    // --- Derived Data & Logic ---
+
+    // 1. Extract Unique Subjects
+    const subjects = Array.from(new Set(data?.questions?.map((q: any) => q.subject || 'General'))).sort() as string[];
+
+    // Extract available languages dynamically
+    const availableLanguages = Array.from(new Set(
+        data?.questions?.flatMap((q: any) => Object.keys(q.text || {})) || []
+    )).filter(l => l) as string[];
+
+    // Default to 'en' if available, otherwise first available, or just 'en'
+    const [language, setLanguage] = useState<string>('en');
+
+    useEffect(() => {
+        if (availableLanguages.length > 0 && !availableLanguages.includes(language)) {
+            setLanguage(availableLanguages.includes('en') ? 'en' : availableLanguages[0]);
+        }
+    }, [availableLanguages.join(',')]); // Update if available languages change
+
     useEffect(() => {
         const fetchAnalysis = async () => {
             const token = localStorage.getItem('token');
@@ -61,22 +80,7 @@ export default function AnswerKeyPage(props: { params: Promise<{ id: string }> }
 
     // --- Derived Data & Logic ---
 
-    // 1. Extract Unique Subjects
-    const subjects = Array.from(new Set(data?.questions?.map((q: any) => q.subject || 'General'))).sort() as string[];
 
-    // Extract available languages dynamically
-    const availableLanguages = Array.from(new Set(
-        data?.questions?.flatMap((q: any) => Object.keys(q.text || {})) || []
-    )).filter(l => l) as string[];
-
-    // Default to 'en' if available, otherwise first available, or just 'en'
-    const [language, setLanguage] = useState<string>('en');
-
-    useEffect(() => {
-        if (availableLanguages.length > 0 && !availableLanguages.includes(language)) {
-            setLanguage(availableLanguages.includes('en') ? 'en' : availableLanguages[0]);
-        }
-    }, [availableLanguages.join(',')]); // Update if available languages change
 
     const languageNames: { [key: string]: string } = {
         en: 'English',

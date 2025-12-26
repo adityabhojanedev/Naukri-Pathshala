@@ -66,8 +66,7 @@ export default function ContestLivePage(props: { params: Promise<{ id: string }>
                         try {
                             await document.documentElement.requestFullscreen();
                         } catch (err) {
-                            console.error("Fullscreen denied", err);
-                            // Maybe force user to click button to enter fullscreen?
+                            console.log("Auto-fullscreen failed (expected if no user gesture), showing manual button.");
                         }
                     }
                 }

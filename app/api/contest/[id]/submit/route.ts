@@ -74,8 +74,19 @@ export async function POST(
             }
         }
 
-        // Fetch all questions for this contest
-        const questions = await Question.find({ _id: { $in: contest.questions } });
+        // Fetch questions based on the IDs the USER actually answered
+        // This failsafe ensures that if an Admin modifies the contest (removes questions) 
+        // while a user is taking the test, we still grade the questions the user answered.
+        const submittedQuestionIds = Object.keys(answers);
+
+        let questions: any[] = [];
+        if (submittedQuestionIds.length > 0) {
+            questions = await Question.find({ _id: { $in: submittedQuestionIds } });
+        } else {
+            // If user submitted nothing, or we want to support the case where they just didn't answer anything
+            // but we still want to record the "skipped" stats, we can fallback to contest.questions
+            questions = await Question.find({ _id: { $in: contest.questions } });
+        }
 
         // 5. Calculate Score
         let score = 0;
@@ -83,21 +94,43 @@ export async function POST(
         let wrong = 0;
         let skipped = 0;
 
+        // We iterate over the FETCHED questions to ensure we have the correct answer key
         questions.forEach((question) => {
-            const userAns = answers[question._id.toString()];
+            const qId = question._id.toString();
+            // Check if user answered this specific question
+            if (answers.hasOwnProperty(qId)) {
+                const userAns = answers[qId];
 
-            if (userAns !== undefined && userAns !== null) {
-                if (userAns === question.correctOption) {
-                    score += 4;
-                    correct++;
+                if (userAns !== undefined && userAns !== null) {
+                    if (userAns === question.correctOption) {
+                        score += 4; // +4 for correct
+                        correct++;
+                    } else {
+                        score -= 1; // -1 for wrong
+                        wrong++;
+                    }
                 } else {
-                    score -= 1;
-                    wrong++;
+                    skipped++;
                 }
             } else {
+                // If the question was in the "questions" array but not in "answers" map?
+                // Depending on logic, if we fetched only submitted questions, this won't happen often 
+                // unless we fell back to contest.questions.
                 skipped++;
             }
         });
+
+        // If we only fetched submitted questions, 'skipped' might be artificially low regarding the Total Contest Questions.
+        // We should calculate 'skipped' based on the Total Contest Questions count if possible, 
+        // or just accept that "skipped" means "skipped within the set we are grading".
+        // Better Approach for Stats:
+        // Total Expected Questions = contest.questions.length (The current state of contest)
+        // correct + wrong + skipped = Total Expected
+        // So:
+        const totalExpected = contest.questions.length;
+        // Re-calculate skipped to reflect the TRUE contest state (what they missed)
+        // skipped = totalQuestions - (correct + wrong)
+        skipped = Math.max(0, totalExpected - (correct + wrong));
 
         // 6. Save (Update or Create) Result
         let result;
@@ -112,7 +145,7 @@ export async function POST(
                     correct,
                     wrong,
                     skipped,
-                    totalQuestions: questions.length
+                    totalQuestions: totalExpected
                 }
             }, { new: true });
         } else {
@@ -128,7 +161,7 @@ export async function POST(
                     correct,
                     wrong,
                     skipped,
-                    totalQuestions: questions.length
+                    totalQuestions: totalExpected
                 }
             });
         }

@@ -67,7 +67,14 @@ export default function ContestLobbyPage(props: { params: Promise<{ id: string }
         ]
     };
 
-    const handleStart = () => {
+    const handleStart = async () => {
+        if (contest?.strictMode) {
+            try {
+                await document.documentElement.requestFullscreen();
+            } catch (err) {
+                console.log("Fullscreen request failed", err);
+            }
+        }
         router.push(`/contest/${params.id}/live`);
     };
 
